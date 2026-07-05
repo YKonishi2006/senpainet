@@ -1,0 +1,8 @@
+# backups & handoff (not part of the app)
+index.*.bak
+*.bak
+index.reverted.html
+index.backup-*.html
+ワイヤーフレーム作成-handoff/
+workspace_import/
+senpainet-roadmap.md
