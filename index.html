@@ -71,6 +71,19 @@
   .cm-dash-grid{display:grid;grid-template-columns:220px minmax(0,1fr) 260px;gap:22px;align-items:start}
   @media (max-width:1080px){ .cm-dash-grid{grid-template-columns:1fr} .cm-dash-side{display:none} }
 
+  /* admin console v2 */
+  .admin2-body{display:flex;flex:1;min-height:0}
+  .admin2-side{width:250px;flex-shrink:0;background:#0f1c33;display:flex;flex-direction:column}
+  .admin2-main{flex:1;min-width:0;padding:26px 30px 50px;background:#f1f4f9}
+  .admin2-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .admin2-charts{display:grid;grid-template-columns:1.5fr 1.15fr .95fr;gap:18px;align-items:start}
+  .admin2-lower{display:grid;grid-template-columns:1.7fr 1fr;gap:18px;align-items:start}
+  @media (max-width:1200px){ .admin2-charts{grid-template-columns:1fr 1fr} .admin2-charts>div:first-child{grid-column:1 / -1} }
+  @media (max-width:1100px){ .admin2-kpis{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:1000px){ .admin2-lower{grid-template-columns:1fr} }
+  @media (max-width:900px){ .admin2-charts{grid-template-columns:1fr} .admin2-charts>div:first-child{grid-column:auto} }
+  @media (max-width:860px){ .admin2-body{flex-direction:column} .admin2-side{width:auto;flex-direction:row;overflow-x:auto} .admin2-side .a2-group{display:none} .admin2-side .a2-foot{display:none} .admin2-side>div{display:flex} }
+
   /* admin console */
   .admin-grid{display:grid;grid-template-columns:238px 1fr;min-height:100vh}
   .admin-cols{display:grid;grid-template-columns:1.5fr 1fr;gap:18px;align-items:start}
@@ -2269,17 +2282,33 @@ function consBrowseHTML(){
 
 /* ============ RENDER ============ */
 /* ============ 運営（管理者）コンソール ============ */
-var admIcons = {
-  dash:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
-  chat:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-11.7 7.7L3 21l1.9-6.1A8.4 8.4 0 1 1 21 11.5z"/></svg>',
-  people:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>',
-  bell:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
-  flag:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/></svg>',
-  back:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>',
-  clock:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>',
-  reply:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17l-5-5 5-5"/><path d="M4 12h11a5 5 0 0 1 5 5v2"/></svg>',
-  pct:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5L5 19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>'
+function admSvg(p, sz){ sz = sz || 18; return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg>'; }
+var admP = {
+  home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/>',
+  people:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>',
+  cap:'<path d="M2 8l10-4 10 4-10 4z"/><path d="M6 10v5c0 1.6 3 3 6 3s6-1.4 6-3v-5"/>',
+  chat:'<path d="M21 11.5a8.4 8.4 0 0 1-11.7 7.7L3 21l1.9-6.1A8.4 8.4 0 1 1 21 11.5z"/>',
+  doc:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/>',
+  flag:'<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>',
+  mega:'<path d="M3 11l14-6v14L3 13z"/><path d="M17 8a3 3 0 0 1 0 6"/><path d="M6 13v4a2 2 0 0 0 2 2h1"/>',
+  cal:'<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/>',
+  bar:'<path d="M3 21h18"/><rect x="5" y="11" width="3" height="7"/><rect x="11" y="6" width="3" height="12"/><rect x="17" y="9" width="3" height="9"/>',
+  pie:'<path d="M21 15.5A9 9 0 1 1 8.5 3"/><path d="M22 12A10 10 0 0 0 12 2v10z"/>',
+  history:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 8v4l3 2"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 6.6 19l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 13.4H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 6.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9 4.6V4a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8z"/>',
+  mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+  db:'<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+  ext:'<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/>',
+  back:'<path d="M19 12H5M12 19l-7-7 7-7"/>',
+  warn:'<path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+  userplus:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>',
+  help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.5 2.5 0 1 1 3.6 2.4c-.8.4-1.1 1-1.1 1.9"/><path d="M12 17h.01"/>',
+  trend:'<path d="M3 17l6-6 4 4 7-7"/><path d="M17 8h4v4"/>',
+  person:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6 8-6s8 2 8 6"/>',
+  bell:'<path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>'
 };
+var admIcons = {};
+Object.keys(admP).forEach(function(k){ admIcons[k] = admSvg(admP[k], 18); });
 function admBadge(txt, c, bg){ return '<span style="font-size:11px;font-weight:700;color:'+c+';background:'+bg+';padding:3px 10px;border-radius:8px;white-space:nowrap">'+txt+'</span>'; }
 function admStatusBadge(status){
   if(status==='suspended') return admBadge('停止中','#c0392b','#fbe4e2');
@@ -2304,74 +2333,150 @@ function admActionBtn(txt, attr, kind){
   return '<span '+attr+' style="cursor:pointer;font-size:11.5px;font-weight:700;color:'+c+';background:'+bg+';padding:6px 12px;border-radius:8px;white-space:nowrap">'+txt+'</span>';
 }
 
+function admLineChart(){
+  var s1 = [210,280,300,222,258,320,272];
+  var s2 = [120,190,150,150,128,235,200];
+  var labels = ['5/12','5/13','5/14','5/15','5/16','5/17','5/18'];
+  var W=640,H=250,x0=54,x1=616,yTop=24,yBot=200;
+  function yv(v){ return yBot - (v/400)*(yBot-yTop); }
+  function xi(i){ return x0 + i*((x1-x0)/6); }
+  var grid='';
+  [0,100,200,300,400].forEach(function(g){ var y=yv(g); grid += '<line x1="'+x0+'" y1="'+y+'" x2="'+x1+'" y2="'+y+'" stroke="#e8edf5"/><text x="'+(x0-10)+'" y="'+(y+4)+'" text-anchor="end" font-size="11" fill="#94a1b5">'+g+'</text>'; });
+  var xlab = labels.map(function(l,i){ return '<text x="'+xi(i)+'" y="'+(yBot+22)+'" text-anchor="middle" font-size="11" fill="#94a1b5">'+l+'</text>'; }).join('');
+  function poly(arr,color){ var pts=arr.map(function(v,i){ return xi(i)+','+yv(v); }).join(' '); var dots=arr.map(function(v,i){ return '<circle cx="'+xi(i)+'" cy="'+yv(v)+'" r="3.5" fill="#fff" stroke="'+color+'" stroke-width="2"/>'; }).join(''); return '<polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+dots; }
+  return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block">'+grid+xlab+poly(s2,'#22b07d')+poly(s1,'#2f73e8')+'</svg>';
+}
+function admDonut(segs){
+  var C = 2*Math.PI*42, off = 0;
+  var circles = segs.map(function(s){ var len = s.pct/100*C; var el = '<circle cx="60" cy="60" r="42" fill="none" stroke="'+s.color+'" stroke-width="17" stroke-dasharray="'+len.toFixed(2)+' '+(C-len).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'" transform="rotate(-90 60 60)"/>'; off += len; return el; }).join('');
+  return '<svg viewBox="0 0 120 120" width="132" height="132">'+circles+'</svg>';
+}
+
+function adminSeniors(){
+  var seniors = state.adminUsers.filter(function(u){ return u.role==='卒業生'; });
+  var rows = seniors.map(function(u){ return '<tr>'
+    + admTd('<span style="font-weight:700;color:#1b2942">'+esc(u.handle)+'</span>')
+    + admTd('<span style="color:#66738c">'+u.kaisei+'回生</span>')
+    + admTd('<span style="color:#3a465f">'+u.answers+'</span>')
+    + admTd('<span style="color:#94a1b5">'+esc(u.joined)+'</span>')
+    + admTd(admStatusBadge(u.status))
+    + admTd(u.status==='suspended' ? admActionBtn('停止解除','data-admin-user="'+u.id+'"','primary') : admActionBtn('利用停止','data-admin-user="'+u.id+'"','danger'))
+    + '</tr>'; }).join('');
+  return admPageHead('先輩（卒業生）管理','卒業生として登録している先輩の管理を行えます。')
+    + admCard('卒業生一覧（'+seniors.length+'人）','', admTable(['ユーザー','回生','回答','登録','状態','操作'], rows));
+}
+
+function adminActivity(){
+  var items = [
+    ['⚙️','Admin','がお知らせ「【重要】システムメンテナンスのお知らせ」を公開しました','5分前'],
+    ['👤','新規ユーザー','が23人登録しました','1時間前'],
+    ['🚩','Admin','が通報された投稿を1件削除しました','2時間前'],
+    ['📢','Admin','が先輩からのお知らせを1件承認しました','4時間前'],
+    ['✏️','Admin','がイベント「OB・OG交流会」を作成しました','昨日'],
+    ['🛠️','システム','が定期バックアップを完了しました','昨日']
+  ].map(function(a){ return '<div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #eef1f7"><span style="width:32px;height:32px;border-radius:50%;background:#eef2f8;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">'+a[0]+'</span><div style="flex:1;font-size:13px;color:#3a465f"><b style="color:#1b2942">'+a[1]+'</b> '+a[2]+'</div><span style="font-size:11.5px;color:#bcc6d6;white-space:nowrap">'+a[3]+'</span></div>'; }).join('');
+  return admPageHead('アクティビティログ','運営操作やシステムの記録を確認できます。')
+    + admCard('最近のアクティビティ','', items);
+}
+
+function adminPlaceholder(title, desc){
+  return admPageHead(title, desc)
+    + '<div style="background:#fff;border:1px solid #e5eaf2;border-radius:16px;padding:64px 30px;text-align:center">'
+    + '<div style="width:64px;height:64px;border-radius:18px;background:#eef3fb;color:#94a1b5;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">'+admSvg(admP.gear,28)+'</div>'
+    + '<div style="font-size:16px;font-weight:800;color:#1b2942">この機能は準備中です</div>'
+    + '<p style="font-size:13px;color:#94a1b5;margin:8px 0 0">'+esc(desc)+'</p></div>';
+}
+
 function adminDashboard(){
-  var st = computeStats();
-  var cons = state.consultations;
-  var unanswered = cons.filter(function(c){ return c.answers.length===0; }).length;
-  var totalAnswers = cons.reduce(function(s2,c){ return s2 + c.answers.length; }, 0);
-  var pending = state.adminReports.filter(function(r){ return r.status==='pending'; }).length;
-  var users = state.adminUsers.length;
-  var kpi = [
-    { label:'相談総数', val:st.total, unit:'件', sub:'累計', c:'#2f73e8', bg:'#e8f1fe', icon:admIcons.chat },
-    { label:'未回答の相談', val:unanswered, unit:'件', sub:'要対応', c:'#e0568a', bg:'#fce8f1', icon:admIcons.clock },
-    { label:'回答総数', val:totalAnswers, unit:'件', sub:'累計', c:'#1e9e63', bg:'#e7f5ee', icon:admIcons.reply },
-    { label:'回答率', val:st.rate, unit:'%', sub:'解決の目安', c:'#2f73e8', bg:'#e8f1fe', icon:admIcons.pct },
-    { label:'登録ユーザー', val:users, unit:'人', sub:'在校生＋卒業生', c:'#6b5ce0', bg:'#ecebfb', icon:admIcons.people },
-    { label:'未対応の通報', val:pending, unit:'件', sub:'要確認', c:'#c07a12', bg:'#fdf0dc', icon:admIcons.flag }
+  var kpis = [
+    { label:'登録ユーザー数', val:'2,345', unit:'人', delta:'+128人', color:'#2f73e8', bg:'#e8f1fe', icon:admSvg(admP.person,22) },
+    { label:'回答済み相談数', val:'1,287', unit:'件', delta:'+86件', color:'#1e9e63', bg:'#e7f5ee', icon:admSvg(admP.chat,22) },
+    { label:'新規相談数', val:'892', unit:'件', delta:'+64件', color:'#e0568a', bg:'#fce8f1', icon:admSvg(admP.help,22) },
+    { label:'アクティブユーザー', val:'1,156', unit:'人', delta:'+97人', color:'#7c5cf0', bg:'#efeafe', icon:admSvg(admP.trend,22) }
   ].map(function(k){
-    return '<div style="background:#fff;border:1px solid #e5eaf2;border-radius:16px;padding:18px 20px">'
-      + '<div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12.5px;color:#66738c;font-weight:600">'+k.label+'</span>'
-      + '<span style="width:36px;height:36px;border-radius:10px;background:'+k.bg+';color:'+k.c+';display:flex;align-items:center;justify-content:center">'+k.icon+'</span></div>'
-      + '<div style="font-size:28px;font-weight:900;color:#14233f;margin-top:12px">'+k.val+'<span style="font-size:14px;font-weight:800;color:#66738c;margin-left:2px">'+k.unit+'</span></div>'
-      + '<div style="font-size:11.5px;color:#94a1b5;margin-top:2px">'+k.sub+'</div></div>';
+    return '<div style="background:#fff;border:1px solid #e5eaf2;border-top:3px solid '+k.color+';border-radius:14px;padding:18px 20px">'
+      + '<div style="display:flex;align-items:flex-start;justify-content:space-between">'
+      + '<div><div style="font-size:12.5px;color:#5a6675;font-weight:600">'+k.label+'</div>'
+      + '<div style="margin-top:10px"><span style="font-size:30px;font-weight:900;color:#14233f">'+k.val+'</span><span style="font-size:14px;font-weight:800;color:#66738c;margin-left:2px">'+k.unit+'</span></div>'
+      + '<div style="font-size:11.5px;color:#94a1b5;margin-top:8px">先週比 <span style="color:#1e9e63;font-weight:700">'+k.delta+'</span></div></div>'
+      + '<span style="width:44px;height:44px;border-radius:12px;background:'+k.bg+';color:'+k.color+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+k.icon+'</span></div></div>';
   }).join('');
-  var kpiGrid = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-bottom:22px">'+kpi+'</div>';
 
-  // category distribution
-  var catCounts = {};
-  cons.forEach(function(c){ catCounts[c.category] = (catCounts[c.category]||0)+1; });
-  var keys = Object.keys(catCounts);
-  var maxc = Math.max.apply(null, keys.map(function(k){ return catCounts[k]; }).concat([1]));
-  var bars = keys.map(function(k){ var m=cats[k]||{label:k,color:'#2f73e8'}; var w=Math.round(catCounts[k]/maxc*100);
-    return '<div style="display:flex;align-items:center;gap:12px;margin:11px 0">'
-      + '<span style="width:104px;flex-shrink:0;font-size:12px;color:#3a465f;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(m.label)+'</span>'
-      + '<div style="flex:1;background:#eef2f8;border-radius:6px;height:12px;overflow:hidden"><div style="width:'+w+'%;height:100%;background:'+m.color+';border-radius:6px"></div></div>'
-      + '<span style="width:26px;font-size:12.5px;font-weight:800;color:#1b2942">'+catCounts[k]+'</span></div>';
+  var legend1 = '<div style="display:flex;gap:16px">'
+    + '<span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#5a6675"><span style="width:14px;height:3px;border-radius:2px;background:#2f73e8"></span>新規相談数</span>'
+    + '<span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#5a6675"><span style="width:14px;height:3px;border-radius:2px;background:#22b07d"></span>回答数</span></div>';
+  var lineCard = admCard('相談・回答の推移', '<span data-toast="期間の変更は準備中です" style="cursor:pointer;font-size:12px;color:#5a6675;background:#f4f7fc;border:1px solid #e3e9f2;border-radius:8px;padding:6px 12px">過去7日間 ⌄</span>',
+    '<div style="padding:14px 18px 14px">'+legend1+'<div style="margin-top:8px">'+admLineChart()+'</div></div>');
+
+  var dist = [
+    { label:'就活', pct:38, count:487, color:'#2f73e8' },
+    { label:'大学生活', pct:24, count:308, color:'#22b07d' },
+    { label:'勉強・学習', pct:16, count:205, color:'#8aa9f2' },
+    { label:'進路・キャリア', pct:12, count:154, color:'#7c5cf0' },
+    { label:'その他', pct:10, count:128, color:'#c7d0de' }
+  ];
+  var legend2 = dist.map(function(d){ return '<div style="display:flex;align-items:center;gap:8px;margin:8px 0"><span style="width:9px;height:9px;border-radius:50%;background:'+d.color+';flex-shrink:0"></span><span style="font-size:12px;color:#3a465f;flex:1">'+d.label+'</span><span style="font-size:11.5px;color:#94a1b5"><b style="color:#1b2942">'+d.pct+'%</b> ('+d.count+'件)</span></div>'; }).join('');
+  var donutCard = admCard('相談カテゴリ別割合', admActionBtn('詳細を見る','data-admin-tab="analytics"',''),
+    '<div style="display:flex;align-items:center;gap:14px;padding:12px 18px 16px;flex-wrap:wrap"><div style="flex-shrink:0">'+admDonut(dist)+'</div><div style="flex:1;min-width:150px">'+legend2+'</div></div>');
+
+  var qa = [
+    ['お知らせを作成','news', admP.mega],
+    ['イベントを作成','events', admP.cal],
+    ['ユーザーを検索','users', admP.person],
+    ['相談を検索','consultations', admP.chat]
+  ].map(function(a){ return '<div data-admin-tab="'+a[1]+'" style="display:flex;align-items:center;gap:11px;padding:13px 15px;border:1px solid #e5eaf2;border-radius:11px;cursor:pointer;background:#fff;font-size:13px;font-weight:600;color:#3a465f"><span style="display:flex;color:#2f73e8">'+admSvg(a[2],18)+'</span>'+a[0]+'</div>'; }).join('');
+  var qaCard = admCard('クイックアクション','', '<div style="display:flex;flex-direction:column;gap:10px;padding:14px 18px 16px">'+qa+'</div>');
+
+  var charts = '<div class="admin2-charts">'+lineCard+donutCard+qaCard+'</div>';
+
+  var rc = { '就活':{c:'#2f73e8',bg:'#e8f1fe'}, '大学生活':{c:'#1e9e63',bg:'#e7f5ee'}, '勉強・学習':{c:'#5b6ef0',bg:'#ebedfe'}, '進路・キャリア':{c:'#7c5cf0',bg:'#efeafe'} };
+  var stt = { '未回答':{c:'#e0568a',bg:'#fce8f1'}, '回答募集中':{c:'#d98324',bg:'#fdeddb'}, '回答済み':{c:'#1e9e63',bg:'#e7f5ee'} };
+  var recent = [
+    ['就活','サマーインターン、何社応募しましたか？','14回生・早稲田大学','2時間前','未回答'],
+    ['大学生活','一人暮らしの家賃相場はどのくらい？','13回生・慶應義塾大学','5時間前','回答募集中'],
+    ['勉強・学習','おすすめのレポート作成ツールを教えてください！','12回生・京都大学','1日前','回答募集中'],
+    ['進路・キャリア','留学の準備はいつから始めるべき？','14回生・上智大学','1日前','未回答'],
+    ['就活','自己PRの添削をお願いしたいです','13回生・明治大学','2日前','回答済み']
+  ].map(function(r){ var cc=rc[r[0]]||{c:'#2f73e8',bg:'#e8f1fe'}; var ss=stt[r[4]]||{c:'#5a6675',bg:'#eef1f7'};
+    return '<div data-admin-tab="consultations" style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid #eef1f7;cursor:pointer">'
+      + '<span style="font-size:11px;font-weight:700;color:'+cc.c+';background:'+cc.bg+';padding:4px 8px;border-radius:8px;white-space:nowrap;flex-shrink:0;width:78px;text-align:center">'+r[0]+'</span>'
+      + '<div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:700;color:#1b2942;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r[1])+'</div><div style="font-size:11.5px;color:#94a1b5;margin-top:3px">'+esc(r[2])+'</div></div>'
+      + '<span style="font-size:11.5px;color:#94a1b5;white-space:nowrap" class="rs-hide-sm">'+r[3]+'</span>'
+      + '<span style="font-size:11px;font-weight:700;color:'+ss.c+';background:'+ss.bg+';padding:4px 11px;border-radius:8px;white-space:nowrap">'+r[4]+'</span></div>';
   }).join('');
-  var barCard = admCard('カテゴリ別の相談件数','', '<div style="padding:16px 20px 18px">'+bars+'</div>');
+  var recentCard = admCard('最近の相談（要対応） <span style="font-size:11px;color:#e0568a;font-weight:700;margin-left:4px">5件</span>','', recent
+    + '<div data-admin-tab="consultations" style="text-align:center;padding:14px;font-size:12.5px;font-weight:700;color:#2f73e8;cursor:pointer">すべての相談を確認する ›</div>');
 
-  // recent consultations
-  var recent = cons.slice(0, 6).map(function(c){ var m=cats[c.category]; var answered=c.answers.length>0;
-    return '<tr>'
-      + admTd('<span style="font-weight:700;color:#1b2942">'+esc(c.title.length>26?c.title.slice(0,26)+'…':c.title)+'</span>')
-      + admTd(admBadge(m.label, m.color, m.bg))
-      + admTd('<span style="color:#66738c">'+(GRADE_LABELS[c.grade]||'-')+'</span>')
-      + admTd('<span style="font-weight:700;color:#1b2942">'+c.answers.length+'</span>')
-      + admTd(answered ? admBadge('回答あり','#1e9e63','#e7f5ee') : admBadge('未回答','#e0568a','#fce8f1'))
-      + admTd(admActionBtn('表示','data-open="'+c.id+'"','primary'))
-      + '</tr>';
-  }).join('');
-  var recentCard = admCard('最近の相談', admActionBtn('すべて見る','data-admin-tab="consultations"',''), admTable(['タイトル','カテゴリ','学年','回答','状態',''], recent));
+  var alerts = [
+    [admP.warn,'#d98324','#fdeddb','通報された投稿があります','新しい通報が3件あります','10分前','reports'],
+    [admP.userplus,'#2f73e8','#e8f1fe','新規登録ユーザー','新しく23人のユーザーが登録しました','1時間前','users'],
+    [admP.help,'#7c5cf0','#efeafe','未回答の相談が増えています','24時間以上未回答の相談が12件あります','3時間前','consultations']
+  ].map(function(a){ return '<div data-admin-tab="'+a[6]+'" style="display:flex;gap:12px;padding:14px 18px;border-bottom:1px solid #eef1f7;cursor:pointer">'
+      + '<span style="width:34px;height:34px;border-radius:10px;background:'+a[2]+';color:'+a[1]+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+admSvg(a[0],17)+'</span>'
+      + '<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700;color:#1b2942">'+a[3]+'</div><div style="font-size:11.5px;color:#94a1b5;margin-top:2px">'+a[4]+'</div></div>'
+      + '<span style="font-size:11px;color:#bcc6d6;white-space:nowrap">'+a[5]+'</span></div>'; }).join('');
+  var alertCard = admCard('通知・アラート <span style="font-size:11px;color:#fff;background:#e0568a;border-radius:9px;padding:1px 8px;font-weight:800;margin-left:4px">3</span>','', alerts);
 
-  // action needed
-  var needCons = cons.filter(function(c){ return c.answers.length===0; }).slice(0,4).map(function(c){ var m=cats[c.category];
-    return '<div data-open="'+c.id+'" style="display:flex;align-items:center;gap:10px;padding:11px 20px;border-bottom:1px solid #eef1f7;cursor:pointer">'
-      + '<span style="width:8px;height:8px;border-radius:50%;background:#e0568a;flex-shrink:0"></span>'
-      + '<div style="min-width:0;flex:1"><div style="font-size:12.5px;font-weight:700;color:#1b2942;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.title)+'</div>'
-      + '<div style="font-size:11px;color:#94a1b5;margin-top:2px">'+esc(m.label)+' ・ '+c.time+'</div></div></div>';
-  }).join('') || '<div style="padding:18px 20px;color:#94a1b5;font-size:12.5px">未回答の相談はありません。</div>';
-  var needReports = state.adminReports.filter(function(r){ return r.status==='pending'; }).slice(0,3).map(function(r){
-    return '<div data-admin-tab="reports" style="display:flex;align-items:center;gap:10px;padding:11px 20px;border-bottom:1px solid #eef1f7;cursor:pointer">'
-      + '<span style="display:flex;color:#c07a12;flex-shrink:0">'+admIcons.flag+'</span>'
-      + '<div style="min-width:0;flex:1"><div style="font-size:12.5px;font-weight:700;color:#1b2942;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r.target)+'</div>'
-      + '<div style="font-size:11px;color:#94a1b5;margin-top:2px">'+esc(r.type)+' ・ '+esc(r.reason)+'</div></div></div>';
-  }).join('') || '<div style="padding:18px 20px;color:#94a1b5;font-size:12.5px">未対応の通報はありません。</div>';
-  var needCard = admCard('対応が必要なもの','', '<div style="font-size:11.5px;font-weight:800;color:#8a97ac;padding:12px 20px 4px">未回答の相談</div>'+needCons
-    + '<div style="font-size:11.5px;font-weight:800;color:#8a97ac;padding:12px 20px 4px">未対応の通報</div>'+needReports);
+  var sys = [ ['サーバー稼働時間','99.9%',99.9,'#1e9e63'], ['データベース使用率','45%',45,'#2f73e8'], ['ストレージ使用率','32%',32,'#7c5cf0'] ]
+    .map(function(v){ return '<div style="padding:13px 18px;border-bottom:1px solid #eef1f7"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:7px"><span style="color:#3a465f">'+v[0]+'</span><span style="font-weight:800;color:#1b2942">'+v[1]+'</span></div><div style="height:6px;background:#eef2f8;border-radius:4px;overflow:hidden"><div style="width:'+v[2]+'%;height:100%;background:'+v[3]+'"></div></div></div>'; }).join('');
+  var sysCard = admCard('システム情報','', sys);
 
-  return admPageHead('ダッシュボード','サービス全体の状況をひと目で確認できます。')
-    + kpiGrid
-    + '<div class="admin-cols"><div style="display:flex;flex-direction:column;gap:18px">'+barCard+recentCard+'</div>'+needCard+'</div>';
+  var lower = '<div class="admin2-lower"><div>'+recentCard+'</div><div style="display:flex;flex-direction:column;gap:18px">'+alertCard+sysCard+'</div></div>';
+
+  var head = '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px">'
+    + '<div><h1 style="margin:0 0 4px;font-size:23px;font-weight:900;color:#14233f">ダッシュボード</h1><p style="margin:0;font-size:13px;color:#66738c">SenpaiNetの運営状況を一目で確認できます。</p></div>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
+    + '<span data-toast="期間の変更は準備中です" style="cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:#3a465f;background:#fff;border:1px solid #dbe2ec;border-radius:9px;padding:9px 14px">📅 2025/05/18 - 2025/05/24 ⌄</span>'
+    + '<span data-toast="エクスポートは準備中です" style="cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:#fff;background:#2f73e8;border-radius:9px;padding:9px 16px">⬇ エクスポート</span></div></div>';
+
+  return head
+    + '<div class="admin2-kpis" style="margin-bottom:18px">'+kpis+'</div>'
+    + charts + '<div style="height:18px"></div>'
+    + lower + '<div style="height:18px"></div>'
+    + admCard('アクティビティログ', admActionBtn('すべて見る','data-admin-tab="activity"',''),
+        [['⚙️','Admin','がお知らせ「【重要】システムメンテナンスのお知らせ」を公開しました','5分前'],
+         ['👤','新規ユーザー','が23人登録しました','1時間前'],
+         ['📢','Admin','が先輩からのお知らせを1件承認しました','4時間前']].map(function(a){ return '<div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #eef1f7"><span style="width:32px;height:32px;border-radius:50%;background:#eef2f8;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">'+a[0]+'</span><div style="flex:1;font-size:13px;color:#3a465f"><b style="color:#1b2942">'+a[1]+'</b> '+a[2]+'</div><span style="font-size:11.5px;color:#bcc6d6;white-space:nowrap">'+a[3]+'</span></div>'; }).join(''));
 }
 
 function adminConsultations(){
@@ -2453,36 +2558,65 @@ function adminReports(){
 }
 
 function adminHTML(){
-  var tabs = [
-    ['dashboard','ダッシュボード', admIcons.dash],
-    ['consultations','相談管理', admIcons.chat],
-    ['users','ユーザー管理', admIcons.people],
-    ['news','お知らせ管理', admIcons.bell],
-    ['reports','通報対応', admIcons.flag]
-  ];
   var pending = state.adminReports.filter(function(r){ return r.status==='pending'; }).length;
-  var navItems = tabs.map(function(t){ var on = state.adminTab===t[0];
-    var badge = (t[0]==='reports' && pending) ? '<span style="margin-left:auto;background:#e0568a;color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;padding:0 5px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center">'+pending+'</span>' : '';
-    return '<div data-admin-tab="'+t[0]+'" style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:10px;cursor:pointer;font-size:13.5px;font-weight:'+(on?700:600)+';color:'+(on?'#fff':'#c4cfe0')+';background:'+(on?'rgba(255,255,255,.13)':'transparent')+'"><span style="display:flex;color:'+(on?'#fff':'#8ea0c0')+'">'+t[2]+'</span>'+t[1]+badge+'</div>';
+  var groups = [
+    { label:null, items:[['dashboard','ダッシュボード',admIcons.home]] },
+    { label:'管理', items:[
+      ['users','ユーザー管理',admIcons.people],
+      ['seniors','先輩（卒業生）管理',admIcons.cap],
+      ['consultations','相談管理',admIcons.chat],
+      ['posts','投稿・コメント管理',admIcons.doc],
+      ['reports','通報管理',admIcons.flag],
+      ['news','お知らせ管理',admIcons.mega],
+      ['events','イベント管理',admIcons.cal] ] },
+    { label:'分析・レポート', items:[
+      ['report','利用状況レポート',admIcons.bar],
+      ['analytics','相談データ分析',admIcons.pie],
+      ['activity','アクティビティログ',admIcons.history] ] },
+    { label:'システム', items:[
+      ['settings','設定',admIcons.gear],
+      ['mail','メール送信履歴',admIcons.mail],
+      ['backup','バックアップ',admIcons.db] ] }
+  ];
+  var navHTML = groups.map(function(g){
+    var lbl = g.label ? '<div class="a2-group" style="font-size:10.5px;font-weight:700;color:#5f719a;letter-spacing:.08em;padding:16px 14px 6px">'+g.label+'</div>' : '';
+    var items = g.items.map(function(it){ var on=state.adminTab===it[0];
+      var badge = (it[0]==='reports' && pending) ? '<span style="margin-left:auto;background:#e0568a;color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;padding:0 5px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center">'+pending+'</span>' : '';
+      return '<div data-admin-tab="'+it[0]+'" style="display:flex;align-items:center;gap:11px;padding:10px 13px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:'+(on?700:500)+';color:'+(on?'#fff':'#aab8d4')+';background:'+(on?'#2f73e8':'transparent')+'"><span style="display:flex;color:'+(on?'#fff':'#7f8fb3')+'">'+it[2]+'</span>'+it[1]+badge+'</div>';
+    }).join('');
+    return lbl + items;
   }).join('');
-  var sidebar = '<aside class="admin-side" style="background:#152238;display:flex;flex-direction:column;gap:4px;padding:22px 16px">'
-    + '<div class="adm-logo" style="display:flex;align-items:center;gap:9px;padding:6px 12px 20px">'
-    + '<div style="width:30px;height:30px;border-radius:8px;background:#2f73e8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8l10-4 10 4-10 4z"/><path d="M6 10v5c0 1.6 3 3 6 3s6-1.4 6-3v-5"/></svg></div>'
-    + '<div><div style="font-size:15px;font-weight:900;color:#fff;line-height:1">SenpaiNet</div><div style="font-size:9.5px;font-weight:800;color:#f5cb4d;letter-spacing:.1em;margin-top:2px">ADMIN CONSOLE</div></div></div>'
-    + navItems
-    + '<div class="adm-back" data-admin-back style="margin-top:auto;display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;color:#c4cfe0"><span style="display:flex;color:#8ea0c0">'+admIcons.back+'</span>サイトに戻る</div>'
-    + '</aside>';
-  var content = state.adminTab==='consultations' ? adminConsultations()
-    : state.adminTab==='users' ? adminUsers()
-    : state.adminTab==='news' ? adminNews()
-    : state.adminTab==='reports' ? adminReports()
-    : adminDashboard();
-  return '<div class="admin-grid">'+sidebar
-    + '<main style="min-width:0;padding:30px 34px 60px">'
-    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:22px;flex-wrap:wrap">'
-    + '<span style="font-size:12px;font-weight:700;color:#c07a12;background:#fdf0dc;padding:5px 13px;border-radius:20px">運営モードで表示中</span>'
-    + '<div style="display:flex;align-items:center;gap:10px"><span style="font-size:12.5px;color:#66738c">運営事務局</span><div style="width:34px;height:34px;border-radius:50%;background:#152238;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800">運</div></div></div>'
-    + content + '</main></div>';
+  var sidebar = '<aside class="admin2-side"><div style="padding:8px 8px">'+navHTML+'</div>'
+    + '<div class="a2-foot" style="margin-top:auto;padding:14px"><div data-admin-back style="display:flex;align-items:center;justify-content:center;gap:9px;padding:11px;border:1px solid #33456b;border-radius:10px;cursor:pointer;font-size:12.5px;font-weight:700;color:#c4cfe0"><span style="display:flex">'+admIcons.ext+'</span>サイトを表示</div></div></aside>';
+
+  var content;
+  switch(state.adminTab){
+    case 'users': content = adminUsers(); break;
+    case 'seniors': content = adminSeniors(); break;
+    case 'consultations': content = adminConsultations(); break;
+    case 'reports': content = adminReports(); break;
+    case 'news': content = adminNews(); break;
+    case 'activity': content = adminActivity(); break;
+    case 'posts': content = adminPlaceholder('投稿・コメント管理','コミュニティ投稿やコメントの管理機能を準備中です。'); break;
+    case 'events': content = adminPlaceholder('イベント管理','イベントの作成・管理機能を準備中です。'); break;
+    case 'report': content = adminPlaceholder('利用状況レポート','利用状況のレポート出力を準備中です。'); break;
+    case 'analytics': content = adminPlaceholder('相談データ分析','相談データの詳細分析を準備中です。'); break;
+    case 'settings': content = adminPlaceholder('設定','各種設定を準備中です。'); break;
+    case 'mail': content = adminPlaceholder('メール送信履歴','メール送信の履歴を準備中です。'); break;
+    case 'backup': content = adminPlaceholder('バックアップ','データのバックアップ機能を準備中です。'); break;
+    default: content = adminDashboard();
+  }
+
+  var topbar = '<header style="position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid #e5eaf2;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;flex-shrink:0">'
+    + '<div style="display:flex;align-items:center;gap:9px"><div style="width:30px;height:30px;border-radius:8px;background:#2f73e8;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+admSvg(admP.cap,17)+'</div>'
+    + '<span style="font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:800;font-size:17px;color:#14233f">SenpaiNet</span><span style="font-size:13px;font-weight:700;color:#94a1b5">Admin</span></div>'
+    + '<div style="display:flex;align-items:center;gap:18px">'
+    + '<div data-toast="通知は準備中です" style="position:relative;cursor:pointer;color:#66738c;display:flex">'+admSvg(admP.bell,20)+'<span style="position:absolute;top:-6px;right:-6px;background:#e0568a;color:#fff;font-size:9px;font-weight:800;width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center">3</span></div>'
+    + '<div data-toast="アカウントメニューは準備中です" style="display:flex;align-items:center;gap:8px;cursor:pointer"><div style="width:32px;height:32px;border-radius:50%;background:#e8f1fe;color:#2f73e8;display:flex;align-items:center;justify-content:center">'+admSvg(admP.person,18)+'</div><span style="font-size:13px;font-weight:700;color:#1b2942">Admin</span><span style="color:#94a1b5;font-size:11px">▾</span></div>'
+    + '</div></header>';
+
+  return '<div style="min-height:100vh;display:flex;flex-direction:column;background:#f1f4f9">'
+    + topbar + '<div class="admin2-body">' + sidebar + '<main class="admin2-main">' + content + '</main></div></div>';
 }
 
 function screenHTML(){
