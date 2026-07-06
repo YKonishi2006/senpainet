@@ -80,6 +80,11 @@
   /* news (お知らせ) dashboard */
   .news-grid{display:grid;grid-template-columns:248px minmax(0,1fr) 300px;gap:24px;align-items:start}
   @media (max-width:1120px){ .news-grid{grid-template-columns:1fr} .news-side{display:none} }
+  /* 先輩からのお知らせ (prominent) */
+  .senpai-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:620px){ .senpai-grid{grid-template-columns:1fr} }
+  .senpai-card{transition:box-shadow .15s,transform .15s}
+  .senpai-card:hover{box-shadow:0 10px 24px rgba(47,115,232,.14);transform:translateY(-2px)}
   .news-row{transition:background .15s}
   .news-row:hover{background:#f7faff}
   .nsw{width:38px;height:22px;border-radius:11px;position:relative;cursor:pointer;flex-shrink:0;transition:background .18s}
@@ -268,6 +273,13 @@ var state = {
     { cat:'maintenance', title:'システムメンテナンス', when:'5月20日（月）02:00 - 05:00' },
     { cat:'event', title:'OB・OG交流会', when:'5月25日（土）14:00 - 17:00' },
     { cat:'feature', title:'機能アップデート予定', when:'6月1日（土）' }
+  ],
+  // 先輩（卒業生）からのお知らせ・宣伝。お知らせページで最も目立つ位置に表示。
+  senpaiNews: [
+    { id:'sn1', kaisei:12, affil:'東京大学', tag:'セミナー', title:'現役東大生による無料オンライン勉強会', body:'受験期の勉強計画の立て方を、実体験をもとにお話しします。中高生ならどなたでも参加OKです！', date:'2026年7月3日', cta:'参加する' },
+    { id:'sn2', kaisei:10, affil:'研修医', tag:'相談会', title:'医学部を目指す後輩へ｜進路相談会', body:'医学部受験のリアルや大学生活について、少人数でざっくばらんに話せる会を開きます。', date:'2026年7月1日', cta:'申し込む' },
+    { id:'sn3', kaisei:14, affil:'早稲田大学', tag:'募集', title:'文化祭の合同企画メンバー募集', body:'在校生と卒業生でコラボ企画を考えています。興味のある人はぜひ声をかけてください！', date:'2026年6月28日', cta:'話を聞く' },
+    { id:'sn4', kaisei:8, affil:'ITエンジニア', tag:'イベント', title:'ITの仕事が分かるオンライン職業体験', body:'プログラミング未経験でも大丈夫。実際の仕事の様子を見ながら質問できます。', date:'2026年6月25日', cta:'詳しく見る' }
   ],
   notifications: [
     { id:'n1', title:'新しい回答が届きました', body:'「理系の大学に決まりません」に14回生の先輩が回答しました。', time:'10分前', unread:true },
@@ -1893,6 +1905,37 @@ function newsSwitch(key, on){
   return '<span class="nsw" data-news-pref="'+key+'" style="background:'+(on?'#2f73e8':'#cdd6e4')+'"><i style="'+(on?'left:18px':'left:2px')+'"></i></span>';
 }
 
+var SENPAI_TAG_COLORS = {
+  'セミナー':{c:'#2f73e8',bg:'#e8f1fe'}, 'イベント':{c:'#2f73e8',bg:'#e8f1fe'},
+  '相談会':{c:'#0284a8',bg:'#dbf1f8'}, '募集':{c:'#c74d80',bg:'#fbe8f1'},
+  '宣伝':{c:'#c07a12',bg:'#fdf0dc'}, 'PR':{c:'#c07a12',bg:'#fdf0dc'}
+};
+function senpaiNewsSection(){
+  var items = state.senpaiNews || [];
+  if(!items.length) return '';
+  var megaphone = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l14-6v14L3 13z"/><path d="M17 8a3 3 0 0 1 0 6"/><path d="M6 13v4a2 2 0 0 0 2 2h1"/></svg>';
+  var cards = items.map(function(s){
+    var tc = SENPAI_TAG_COLORS[s.tag] || {c:'#2f73e8',bg:'#e8f1fe'};
+    var badge = personBadge(s.kaisei);
+    return '<div class="senpai-card" style="background:#fff;border:1px solid #dbe7fb;border-radius:16px;padding:18px 20px;display:flex;flex-direction:column">'
+      + '<div style="display:flex;align-items:center;gap:10px">'+avatar(40,'#e6effe','#2f73e8')
+      + '<div style="min-width:0;flex:1"><div style="font-size:13.5px;font-weight:700;color:#1b2942">'+s.kaisei+'回生・'+esc(s.affil)+'</div>'
+      + '<div style="display:flex;align-items:center;gap:6px;margin-top:3px"><span style="font-size:10px;font-weight:700;color:#1e9e63;background:#e7f5ee;padding:2px 8px;border-radius:8px">先輩</span><span style="font-size:11.5px;color:#94a1b5">'+s.date+'</span></div></div>'
+      + '<span style="font-size:11px;font-weight:700;color:'+tc.c+';background:'+tc.bg+';padding:4px 11px;border-radius:8px;white-space:nowrap">'+esc(s.tag)+'</span></div>'
+      + '<div style="font-size:15.5px;font-weight:800;color:#14233f;margin:14px 0 7px;line-height:1.5">'+esc(s.title)+'</div>'
+      + '<p style="font-size:13px;color:#5a6678;line-height:1.8;margin:0 0 16px;flex:1">'+esc(s.body)+'</p>'
+      + '<button data-toast="「'+esc(s.title)+'」の詳細は準備中です" style="align-self:flex-start;cursor:pointer;border:none;background:#2f73e8;color:#fff;font-weight:700;font-size:12.5px;padding:10px 20px;border-radius:10px;display:inline-flex;align-items:center;gap:6px">'+esc(s.cta)+' →</button></div>';
+  }).join('');
+  return '<section id="senpai-news" style="background:linear-gradient(135deg,#e9f2ff 0%,#f3f8ff 100%);border:1px solid #d3e3fb;border-radius:20px;padding:22px 24px;margin-bottom:26px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap">'
+    + '<div style="display:flex;align-items:center;gap:12px">'
+    + '<span style="width:42px;height:42px;border-radius:12px;background:#2f73e8;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+megaphone+'</span>'
+    + '<div><div style="font-size:19px;font-weight:900;color:#14233f;line-height:1.3">先輩からのお知らせ</div>'
+    + '<div style="font-size:12.5px;color:#5a6678;margin-top:2px">先輩からのイベント・募集・お役立ち情報をチェックしよう</div></div></div>'
+    + '<span data-nav="outreach" style="cursor:pointer;font-size:12.5px;font-weight:700;color:#2f73e8;white-space:nowrap">もっと見る ›</span></div>'
+    + '<div class="senpai-grid">'+cards+'</div></section>';
+}
+
 function newsHTML(){
   var f = state.newsFilter;
   // ---- left rail ----
@@ -1910,6 +1953,7 @@ function newsHTML(){
   var left = '<aside class="news-side" style="display:flex;flex-direction:column;gap:0;position:sticky;top:82px">'
     + '<div style="background:#fff;border:1px solid #e7edf6;border-radius:16px;padding:14px">'
     + '<div style="display:flex;align-items:center;gap:9px;padding:6px 10px 12px;color:#2f73e8"><span style="display:flex">'+newsIcon('notice',20)+'</span><span style="font-size:16px;font-weight:900;color:#1b2942">お知らせ</span></div>'
+    + '<div data-scroll="senpai-news" class="senpai-card" style="display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:11px;cursor:pointer;background:linear-gradient(135deg,#3b7bf0,#2f73e8);color:#fff;font-weight:700;font-size:13.5px;margin-bottom:8px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l14-6v14L3 13z"/><path d="M17 8a3 3 0 0 1 0 6"/></svg>先輩からのお知らせ</div>'
     + primary
     + '<div style="height:1px;background:#edf1f8;margin:12px 4px"></div>'
     + '<div style="font-size:11.5px;font-weight:800;color:#94a1b5;padding:2px 12px 8px">カテゴリ</div>'
@@ -1961,6 +2005,8 @@ function newsHTML(){
   var center = '<div style="min-width:0">'
     + '<h1 style="margin:0;font-size:27px;font-weight:900;color:#14233f">お知らせ</h1>'
     + '<p style="margin:8px 0 22px;font-size:13.5px;color:#66738c">SenpaiNetからの最新情報をお届けします。</p>'
+    + senpaiNewsSection()
+    + '<h2 style="font-size:18px;font-weight:800;color:#1b2942;margin:6px 0 16px">運営からのお知らせ</h2>'
     + hero
     + '<h2 style="font-size:18px;font-weight:800;color:#1b2942;margin:30px 0 16px">新着のお知らせ</h2>'
     + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px;flex-wrap:wrap"><div style="display:flex;flex-wrap:wrap;gap:8px">'+chips+'</div>'
