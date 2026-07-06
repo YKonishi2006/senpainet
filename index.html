@@ -899,7 +899,8 @@ function postHTML(){
   var stepInline = stepData.map(function(st, idx){
     var n=st[0], done=n<state.pstep, cur=n===state.pstep;
     var circle;
-    if(cur) circle = '<span style="width:26px;height:26px;border-radius:50%;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#2f73e8;color:#fff">'+n+'</span>';
+    if(cur){ var innerCur = (n===stepData.length) ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' : n;
+      circle = '<span style="width:26px;height:26px;border-radius:50%;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#2f73e8;color:#fff">'+innerCur+'</span>'; }
     else if(done) circle = '<span style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#fff;color:#9aa6ba;border:1.5px solid #cfd8e6"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>';
     else circle = '<span style="width:26px;height:26px;border-radius:50%;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#fff;color:#9aa6ba;border:1.5px solid #cfd8e6">'+n+'</span>';
     var lbl = '<span style="font-size:12.5px;font-weight:'+(cur?700:500)+';color:'+(cur?'#1f5fd0':'#94a1b5')+';white-space:nowrap">'+st[1]+'</span>';
@@ -1048,13 +1049,24 @@ function postHTML(){
       + '<div style="display:flex;flex-direction:column;gap:18px">'+checklistCard+tipsCard2+'</div>'
       + '</div>';
   } else {
-    body = '<div style="max-width:540px;margin:0 auto;text-align:center;background:#fff;border:1px solid #e7edf6;border-radius:16px;padding:48px 28px">'
-      + '<div style="width:72px;height:72px;border-radius:50%;background:#e8f1fe;display:flex;align-items:center;justify-content:center;margin:0 auto">'+svg.check+'</div>'
-      + '<h2 style="font-size:21px;font-weight:900;color:#1b2942;margin:20px 0 8px">投稿が完了しました！</h2>'
-      + '<p style="font-size:13.5px;color:#5a6678;line-height:1.8;margin:0">先輩からの回答が届くと通知でお知らせします。<br>平均4時間で最初の回答が届いています。</p>'
-      + '<div style="display:flex;justify-content:center;gap:14px;margin-top:28px">'
-      + '<button id="browse-reset" style="cursor:pointer;background:#fff;border:1.5px solid #d4dde9;color:#3a465f;font-weight:700;font-size:14px;padding:12px 26px;border-radius:11px">相談一覧へ</button>'
-      + '<button id="home-reset" style="cursor:pointer;border:none;background:#2f73e8;color:#fff;font-weight:700;font-size:14px;padding:12px 30px;border-radius:11px">ホームに戻る</button>'
+    var flowRows = [
+      ['1','先輩があなたの相談に回答します','同じ経験をした先輩が、あなたの相談に答えてくれます。'],
+      ['2','回答が届くと通知でお知らせします','平均4時間ほどで最初の回答が届いています。'],
+      ['3','「役に立った」で感謝を伝えましょう','回答してくれた先輩に、お礼の気持ちを届けられます。']
+    ].map(function(f){ return '<div style="display:flex;gap:12px;align-items:flex-start;padding:8px 0"><span style="width:24px;height:24px;border-radius:50%;background:#2f73e8;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">'+f[0]+'</span><div><div style="font-size:13px;font-weight:700;color:#1b2942">'+f[1]+'</div><p style="font-size:11.5px;color:#66738c;line-height:1.65;margin:2px 0 0">'+f[2]+'</p></div></div>'; }).join('');
+    body = '<div style="max-width:600px;margin:0 auto">'
+      + '<div style="background:#fff;border:1px solid #e7edf6;border-radius:18px;padding:44px 36px;text-align:center">'
+      + '<div style="width:84px;height:84px;border-radius:50%;background:#e7f5ee;display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 0 0 8px rgba(30,158,99,.08)">'
+      + '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1e9e63" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>'
+      + '<h2 style="font-size:22px;font-weight:900;color:#14233f;margin:22px 0 8px">投稿が完了しました！</h2>'
+      + '<p style="font-size:13.5px;color:#5a6678;line-height:1.85;margin:0 auto;max-width:420px">相談を公開しました。先輩からの回答が届くと通知でお知らせします。</p>'
+      + '<div style="text-align:left;background:#f5f8ff;border:1px solid #e3ecfb;border-radius:14px;padding:18px 20px;margin:26px 0 4px">'
+      + '<div style="font-size:12.5px;font-weight:800;color:#1f5fd0;margin-bottom:10px">このあとの流れ</div>'+flowRows+'</div>'
+      + '<div style="display:flex;gap:14px;justify-content:center;margin-top:26px">'
+      + '<button id="browse-reset" style="cursor:pointer;background:#fff;border:1.5px solid #d4dde9;color:#3a465f;font-weight:700;font-size:14px;padding:13px 26px;border-radius:12px">相談一覧を見る</button>'
+      + '<button id="mypage-reset" style="cursor:pointer;border:none;background:#2f73e8;color:#fff;font-weight:800;font-size:14px;padding:13px 30px;border-radius:12px">マイページで確認</button>'
+      + '</div>'
+      + '<div id="home-reset" style="text-align:center;margin-top:16px;font-size:12.5px;font-weight:700;color:#66738c;cursor:pointer">ホームに戻る</div>'
       + '</div></div>';
   }
 
@@ -2944,8 +2956,10 @@ function wire(){
     var em = document.getElementById('sp-email'); if(em) em.value = '';
     toast('お問い合わせを送信しました。ありがとうございます。');
   });
-  on('browse-reset','click', function(){ state.pstep=1; state.pcat=''; state.ptitle=''; state.pbody=''; state.pContext=''; state.pMoreOpen=false; go('browse'); });
-  on('home-reset','click', function(){ state.pstep=1; state.pcat=''; state.ptitle=''; state.pbody=''; state.pContext=''; state.pMoreOpen=false; go('home'); });
+  function resetPost(){ state.pstep=1; state.pcat=''; state.ptitle=''; state.pbody=''; state.pContext=''; state.pMoreOpen=false; }
+  on('browse-reset','click', function(){ resetPost(); go('browse'); });
+  on('mypage-reset','click', function(){ resetPost(); go('mypage'); });
+  on('home-reset','click', function(){ resetPost(); go('home'); });
 
   // Detail answer
   on('open-answer','click', function(){ state.answering=true; render(); });
