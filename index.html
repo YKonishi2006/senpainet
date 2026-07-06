@@ -1292,87 +1292,145 @@ function legalHTML(key){
 
 /* ============ 先輩の方へ ============ */
 function alumniHTML(){
-  var st = computeStats();
-  // 回答待ち（未回答）の相談。無ければデザインの例示にフォールバック。
-  var waiting = state.consultations.filter(function(c){ return c.answers.length===0; }).slice(0,3);
-  var queueSrc = waiting.length ? waiting.map(function(c){ var m=cats[c.category]; return {cat:m.label,color:m.color,bg:m.bg,title:c.title,meta:'回答 0件 ・ '+c.time,id:c.id}; })
-    : [ {cat:'進路・受験',color:'#0ea5a9',bg:'#e1f6f7',title:'理系と文系で迷っています...',meta:'回答 0件 ・ 30分前',id:'oc_rikei'},
-        {cat:'将来・キャリア',color:'#5b6ef0',bg:'#ebedfe',title:'将来やりたいことが見つかりません',meta:'回答 0件 ・ 1時間前',id:'oc_yaritai'},
-        {cat:'学校生活',color:'#7c5cf0',bg:'#efeafe',title:'高校生活をもっと楽しむには？',meta:'回答 0件 ・ 3時間前',id:'oc_school'} ];
-  var queueCards = queueSrc.map(function(q,i){
-    var fade = i===2 ? ';opacity:.6' : '';
-    return '<div data-open="'+q.id+'" style="border:1px solid #e7edf6;border-radius:12px;padding:12px 14px;cursor:pointer;background:#fff'+fade+'">'
-      + '<span style="font-size:10.5px;font-weight:700;color:'+q.color+';background:'+q.bg+';padding:2px 8px;border-radius:8px">'+esc(q.cat)+'</span>'
-      + '<div style="font-size:13.5px;font-weight:700;color:#1b2942;margin-top:8px">'+esc(q.title)+'</div>'
-      + '<div style="font-size:11px;color:#94a1b5;margin-top:5px">'+esc(q.meta)+'</div></div>';
-  }).join('');
+  var icPencil = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+  var icPeople = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>';
+  var icDoc = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><circle cx="11" cy="14.5" r="2.4"/><path d="M13.2 16.7L15 18.5"/></svg>';
+  var icStar26 = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 18.8 6.2 21.9l1.1-6.5L2.6 10.7l6.5-.9z"/></svg>';
+  var icChat = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-11.7 7.7L3 21l1.9-6.1A8.4 8.4 0 1 1 21 11.5z"/></svg>';
 
-  var testi = [
-    ['高校生の時こういう場があったらよかったのにと思って始めました。5分の空き時間に1件答えるだけでも、誰かの背中を押せる。それがすごく嬉しいです。','卒業生（大学2年）','回答48件・役に立った112'],
-    ['学年が近いぶん、部活と勉強の両立や、いま先生には聞きにくいことにも具体的に答えられます。同じ学校の先輩として後輩の力になれるのが嬉しいです。','在校生の先輩（高3）','回答12件・役に立った29']
-  ];
-  var testiCards = testi.map(function(t){
-    return '<div style="background:#eef4ff;border-radius:16px;padding:24px;position:relative">'
-      + '<div style="font-size:34px;color:#b6d2f7;font-weight:900;line-height:1;font-family:Georgia,serif">"</div>'
-      + '<p style="font-size:13.5px;color:#3a465f;line-height:1.85;margin:4px 0 16px">'+esc(t[0])+'</p>'
-      + '<div style="display:flex;align-items:center;gap:10px">'+avatar(34,'#d7e6fb','#2f73e8')
-      + '<div><div style="font-size:13px;font-weight:700;color:#1b2942">'+esc(t[1])+'</div><div style="font-size:11px;color:#76839a">'+esc(t[2])+'</div></div></div></div>';
-  }).join('');
+  // ---- hero illustration ----
+  var heroArt = '<div style="position:relative;width:100%;max-width:520px;margin:0 0 0 auto">'
+    + '<svg viewBox="0 0 520 400" width="100%" style="display:block">'
+    + '<ellipse cx="270" cy="215" rx="248" ry="172" fill="#d8e7ff"/>'
+    + '<circle cx="447" cy="120" r="38" fill="#c7dcff"/><circle cx="80" cy="255" r="26" fill="#c7dcff"/>'
+    + '<g stroke="#93b8ef" stroke-width="4" fill="none" stroke-linecap="round"><path d="M64 336 q-16 -30 -6 -56"/><path d="M64 336 q16 -22 34 -30"/><path d="M64 336 q-2 -22 -22 -30"/></g>'
+    + '<path d="M296 336 v-42 a46 46 0 0 1 92 0 v42 z" fill="#e3ebf7"/>'
+    + '<circle cx="342" cy="196" r="33" fill="#f5c6a3"/>'
+    + '<path d="M309 192 a33 33 0 0 1 66 0 q4 -42 -33 -42 q-37 0 -33 42z" fill="#22314f"/>'
+    + '<path d="M150 336 v-48 a47 47 0 0 1 94 0 v48 z" fill="#2f73e8"/>'
+    + '<circle cx="197" cy="200" r="36" fill="#f5c6a3"/>'
+    + '<path d="M162 194 a35 35 0 0 1 70 0 q0 -44 -35 -44 q-35 0 -35 44z" fill="#1b2a44"/>'
+    + '<rect x="176" y="252" width="170" height="92" rx="10" fill="#32456a"/>'
+    + '<rect x="188" y="264" width="146" height="68" rx="6" fill="#5b8bf5"/>'
+    + '<rect x="150" y="340" width="222" height="15" rx="7" fill="#26375a"/>'
+    + '</svg>'
+    + '<div style="position:absolute;left:2%;top:15%;width:52px;height:52px;border-radius:50%;background:#fff;box-shadow:0 8px 20px rgba(31,95,208,.18);display:flex;align-items:center;justify-content:center;color:#2f73e8">'+heart(24)+'</div>'
+    + '<div style="position:absolute;right:3%;top:8%;width:56px;height:56px;border-radius:50%;background:#2f73e8;box-shadow:0 8px 20px rgba(31,95,208,.28);display:flex;align-items:center;justify-content:center;color:#fff"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8l10-4 10 4-10 4z"/><path d="M6 10v5c0 1.6 3 3 6 3s6-1.4 6-3v-5"/></svg></div>'
+    + '</div>';
 
-  var tl = [['1','学年・回生を登録'],['2','答えられる相談を選ぶ'],['3','経験を書いて送る']];
-  var tlSteps = tl.map(function(s){
-    return '<div style="flex:1;position:relative;z-index:1;text-align:center;padding:0 10px">'
-      + '<div class="num" style="width:38px;height:38px;border-radius:50%;background:#0f1e3d;color:#fff;font-size:15px;display:flex;align-items:center;justify-content:center;margin:0 auto">'+s[0]+'</div>'
-      + '<div style="font-size:13px;font-weight:700;color:#1b2942;margin-top:12px">'+s[1]+'</div></div>';
-  }).join('');
-
-  return ''
-    // dark inverted hero + waiting queue
-    + '<div style="background:#0f1e3d">'
-    + '<section class="rs-post rs-pad" style="max-width:1180px;margin:0 auto;padding:60px 28px 44px;display:grid;grid-template-columns:1fr 1.1fr;gap:44px;align-items:center">'
+  var hero = '<div style="background:linear-gradient(180deg,#e9f1ff 0%,#f4f8ff 100%)">'
+    + '<section class="rs-post rs-pad" style="max-width:1180px;margin:0 auto;padding:52px 28px 40px;display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center">'
     + '<div>'
-    + '<span style="display:inline-block;font-size:12px;font-weight:700;color:#a9c6ff;background:rgba(255,255,255,.08);padding:6px 14px;border-radius:20px">先輩（上級生・卒業生）の方へ</span>'
-    + '<h1 class="rs-page-h1" style="margin:16px 0 0;font-size:36px;line-height:1.4;font-weight:900;letter-spacing:-.01em;color:#fff"><span style="display:inline-block;white-space:nowrap">あなたの数分が、</span><br><span style="display:inline-block;white-space:nowrap">後輩の一歩になる。</span></h1>'
-    + '<p style="margin:18px 0 0;font-size:14.5px;line-height:1.9;color:#aebbd6">今この瞬間も、あなたと同じ道で悩む後輩が回答を待っています。上級生でも卒業生でも、経験をひとことのアドバイスに変えて届けてください。</p>'
-    + '<div class="rs-btn-row" style="margin-top:26px;display:flex;gap:14px;flex-wrap:wrap">'
-    + '<button data-auth="signup" style="border:none;cursor:pointer;background:#f5cb4d;color:#3d2f06;border-radius:14px;padding:14px 26px;font-size:15.5px;font-weight:700">先輩として登録する</button>'
-    + '<button data-nav="browse" style="cursor:pointer;background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.3);border-radius:14px;padding:14px 26px;font-size:15.5px;font-weight:700">待っている相談を見る</button>'
-    + '</div>'
-    + '<div style="display:flex;gap:28px;margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,.12)">'
-    + '<div><div class="num" style="font-size:24px;color:#fff">'+waitingCount()+'<span style="font-size:13px;font-weight:500;color:#aebbd6">人</span></div><div style="font-size:11.5px;color:#7f8db0;margin-top:2px">回答待ちの後輩</div></div>'
-    + '<div><div class="num" style="font-size:24px;color:#fff">'+st.senpai.toLocaleString()+'<span style="font-size:13px;font-weight:500;color:#aebbd6">人</span></div><div style="font-size:11.5px;color:#7f8db0;margin-top:2px">登録した先輩</div></div>'
-    + '<div><div class="num" style="font-size:24px;color:#fff">'+(st.avgHours>0?(st.avgHours<10?Math.round(st.avgHours*10)/10:Math.round(st.avgHours)):'—')+'<span style="font-size:13px;font-weight:500;color:#aebbd6">時間</span></div><div style="font-size:11.5px;color:#7f8db0;margin-top:2px">平均返信時間</div></div>'
+    + '<span style="display:inline-block;font-size:12.5px;font-weight:700;color:#2f73e8;background:#dbe8ff;padding:6px 14px;border-radius:20px">先輩（上級生・卒業生）の方へ</span>'
+    + '<h1 class="rs-page-h1" style="margin:18px 0 0;font-size:38px;line-height:1.35;font-weight:900;letter-spacing:-.01em;color:#14233f">あなたの経験が、<br>後輩の<span style="color:#2f73e8">未来</span>を変える。</h1>'
+    + '<p style="margin:20px 0 0;font-size:14.5px;line-height:1.9;color:#5a6678">大学生活、勉強、進路、就職活動…<br>あなたの一言が、誰かの不安を解消し、<br>次の一歩を踏み出すきっかけになります。</p>'
+    + '<div class="rs-btn-row" style="margin-top:28px;display:flex;gap:14px">'
+    + '<button data-auth="signup" style="border:none;cursor:pointer;background:#f5cb4d;color:#3d2f06;border-radius:12px;padding:14px 26px;font-size:15px;font-weight:800">先輩として登録する</button>'
+    + '<button data-nav="browse" style="cursor:pointer;background:#fff;color:#2f73e8;border:1.5px solid #bcd3f5;border-radius:12px;padding:14px 26px;font-size:15px;font-weight:700">待っている相談を見る</button>'
     + '</div></div>'
-    // waiting queue preview
-    + '<div style="background:#fff;border-radius:18px;padding:20px;box-shadow:0 20px 50px rgba(0,0,0,.25)">'
-    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><span style="font-size:13px;font-weight:700;color:#1b2942">回答待ちの相談</span><span style="font-size:10.5px;font-weight:700;color:#e0568a;background:#fde8f0;padding:3px 9px;border-radius:10px">未回答 '+queueSrc.length+'件</span></div>'
-    + '<div style="display:flex;flex-direction:column;gap:10px">'+queueCards+'</div>'
-    + '<button data-nav="browse" style="width:100%;margin-top:14px;border:none;cursor:pointer;background:#0f1e3d;color:#fff;font-weight:700;font-size:13px;padding:12px;border-radius:10px">これらに回答する</button>'
-    + '</div></section></div>'
-    // testimonials
-    + '<section class="rs-pad" style="max-width:1180px;margin:50px auto 0;padding:0 28px">'
-    + '<h2 style="margin:0 0 20px;font-size:19px;font-weight:700;color:#1b2942">先輩たちの声</h2>'
-    + '<div class="rs-post" style="display:grid;grid-template-columns:repeat(2,1fr);gap:18px">'+testiCards+'</div></section>'
-    // horizontal connected timeline
-    + '<section class="rs-pad" style="max-width:1180px;margin:50px auto 0;padding:0 28px">'
-    + '<h2 style="margin:0 0 26px;font-size:19px;font-weight:700;color:#1b2942">登録から回答までは3分</h2>'
-    + '<div style="display:flex;align-items:flex-start;position:relative"><div style="position:absolute;top:19px;left:6%;right:6%;height:2px;background:#d4dde9;z-index:0"></div>'+tlSteps+'</div></section>'
-    // community entry
-    + '<section class="rs-pad" style="max-width:1180px;margin:50px auto 0;padding:0 28px">'
-    + '<div class="rs-stack-sm" style="background:#fff;border:1px solid #e7edf6;border-radius:16px;padding:24px 26px;display:flex;align-items:center;justify-content:space-between;gap:16px">'
-    + '<div style="display:flex;align-items:center;gap:16px"><div style="width:52px;height:52px;border-radius:14px;background:#e8f1fe;color:#2f73e8;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+groupIcon+'</div>'
-    + '<div><div style="font-size:16px;font-weight:900;color:#1b2942">卒業生コミュニティ</div><p style="font-size:13px;color:#66738c;line-height:1.7;margin:5px 0 0">同じ回生・同じ大学・テーマ別のグループで、就活や大学生活など卒業生同士でつながれます。</p></div></div>'
-    + '<button data-nav="community" style="border:none;cursor:pointer;background:#2f73e8;color:#fff;font-weight:700;font-size:14px;padding:12px 24px;border-radius:10px;white-space:nowrap">コミュニティを見る</button></div>'
-    // outreach entry
-    + '<div class="rs-stack-sm" style="background:#fff;border:1px solid #e7edf6;border-radius:16px;padding:24px 26px;margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:16px">'
-    + '<div style="display:flex;align-items:center;gap:16px"><div style="width:52px;height:52px;border-radius:14px;background:#e8f1fe;color:#2f73e8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg></div>'
-    + '<div><div style="font-size:16px;font-weight:900;color:#1b2942">在校生に発信する</div><p style="font-size:13px;color:#66738c;line-height:1.7;margin:5px 0 0">卒論の調査協力やイベント・説明会の募集など、多くの在校生（中高生）に呼びかけられます。</p></div></div>'
-    + '<button data-nav="outreach" style="border:none;cursor:pointer;background:#2f73e8;color:#fff;font-weight:700;font-size:14px;padding:12px 24px;border-radius:10px;white-space:nowrap">募集を見る</button></div></section>'
-    // dark cta banner
-    + '<section style="margin:56px 0 0;padding:44px 28px;background:#0f1e3d;text-align:center">'
-    + '<div style="font-size:20px;font-weight:900;color:#fff">あなたの経験を、次の一歩に。</div>'
-    + '<p style="font-size:13.5px;color:#aebbd6;margin:10px 0 22px">登録は1分で完了。上級生でも卒業生でも、今すぐ後輩の力になれます。</p>'
-    + '<button data-auth="signup" style="border:none;cursor:pointer;background:#f5cb4d;color:#3d2f06;border-radius:24px;padding:13px 32px;font-size:14.5px;font-weight:700">先輩として登録する</button></section>';
+    + heroArt
+    + '</section></div>';
+
+  // ---- stats bar ----
+  function statC(icon, label, val, unit, sub, subColor, noBorder){
+    return '<div class="rs-stat" style="display:flex;align-items:center;gap:15px;justify-content:center;padding:4px 12px;'+(noBorder?'':'border-right:1px solid #edf1f8')+'">'
+      + '<div style="width:54px;height:54px;border-radius:50%;background:#e8f1fe;color:#2f73e8;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+icon+'</div>'
+      + '<div><div style="font-size:12.5px;color:#66738c">'+label+'</div>'
+      + '<div style="font-size:26px;font-weight:900;color:#14233f;line-height:1.25">'+val+'<span style="font-size:14px;font-weight:800">'+unit+'</span></div>'
+      + '<div style="font-size:11.5px;color:'+subColor+';margin-top:1px">'+sub+'</div></div></div>';
+  }
+  var stats = '<section class="rs-pad" style="max-width:1180px;margin:-8px auto 0;padding:0 28px;position:relative;z-index:2">'
+    + '<div class="rs-stats" style="background:#fff;border:1px solid #e7edf6;border-radius:18px;padding:26px 18px;display:grid;grid-template-columns:repeat(3,1fr);box-shadow:0 12px 30px rgba(31,95,208,.07)">'
+    + statC(icChat,'回答された相談','12,453','件','<span style="color:#1e9e63;font-weight:700">今月 +243件</span>','#1e9e63',false)
+    + statC(icPeople,'登録している先輩','2,387','人','<span style="color:#1e9e63;font-weight:700">今月 +68人</span>','#1e9e63',false)
+    + statC(icStar26,'満足度','98','%','（後輩アンケートより）','#94a1b5',true)
+    + '</div></section>';
+
+  // ---- merits ----
+  var merits = [
+    { icon:heart(22), c:'#e0568a', bg:'#fce8f1', title:'後輩を支援できる', body:'あなたの経験が、後輩の悩みや不安を解消し、未来への一歩に繋がります。' },
+    { icon:icPencil, c:'#2f73e8', bg:'#e8f1fe', title:'経験を整理できる', body:'自分の経験を振り返り、言語化することで、学びや気づきが得られます。' },
+    { icon:icPeople, c:'#c07a12', bg:'#fdf0dc', title:'つながりが広がる', body:'同じ学校の先輩・後輩とのつながりが生まれ、卒業後も関係が続きます。' }
+  ].map(function(m){
+    return '<div style="background:#fff;border:1px solid #e7edf6;border-radius:16px;padding:24px 22px">'
+      + '<div style="width:50px;height:50px;border-radius:14px;background:'+m.bg+';color:'+m.c+';display:flex;align-items:center;justify-content:center">'+m.icon+'</div>'
+      + '<div style="font-size:16px;font-weight:800;color:#14233f;margin:16px 0 8px">'+m.title+'</div>'
+      + '<p style="font-size:13px;color:#66738c;line-height:1.85;margin:0">'+m.body+'</p></div>';
+  }).join('');
+  var meritSection = '<section class="rs-pad" style="max-width:1180px;margin:52px auto 0;padding:0 28px">'
+    + '<h2 style="text-align:center;margin:0 0 26px;font-size:22px;font-weight:900;color:#14233f">先輩として参加するメリット</h2>'
+    + '<div class="rs-post" style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px">'+merits+'</div></section>';
+
+  // ---- active seniors ----
+  var seniors = [
+    { kaisei:13, uni:'早稲田大学 商学部', ans:142, rate:'4.9' },
+    { kaisei:12, uni:'慶應義塾大学 総合政策学部', ans:98, rate:'5.0' },
+    { kaisei:14, uni:'東京大学 工学部', ans:76, rate:'4.8' },
+    { kaisei:12, uni:'上智大学 外国語学部', ans:63, rate:'4.8' },
+    { kaisei:11, uni:'一橋大学 経済学部', ans:58, rate:'4.7' }
+  ].map(function(p){
+    var badge = '<span style="position:absolute;right:0;bottom:2px;width:20px;height:20px;border-radius:50%;background:#2f73e8;border:2px solid #fff;display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5"><path d="M20 6L9 17l-5-5"/></svg></span>';
+    return '<div style="flex:0 0 178px;background:#fff;border:1px solid #e7edf6;border-radius:16px;padding:20px 14px;text-align:center">'
+      + '<div style="position:relative;width:70px;margin:0 auto">'+avatar(70,'#e6effe','#2f73e8')+badge+'</div>'
+      + '<div style="font-size:14px;font-weight:800;color:#1b2942;margin-top:12px">'+p.kaisei+'回生</div>'
+      + '<div style="font-size:11.5px;color:#76839a;margin-top:3px;line-height:1.45;min-height:32px">'+esc(p.uni)+'</div>'
+      + '<div style="font-size:13px;color:#3a465f;margin-top:8px">回答 <span style="font-weight:900;font-size:17px;color:#14233f">'+p.ans+'</span>件</div>'
+      + '<div style="font-size:11.5px;color:#66738c;margin-top:8px"><span style="color:#f5b400">★</span> '+p.rate+' <span style="color:#94a1b5">(後輩の評価)</span></div></div>';
+  }).join('');
+  var seniorSection = '<section class="rs-pad" style="max-width:1180px;margin:52px auto 0;padding:0 28px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><h2 style="margin:0;font-size:20px;font-weight:900;color:#14233f">活躍中の先輩たち</h2>'
+    + '<span data-toast="先輩一覧は準備中です" style="cursor:pointer;font-size:12.5px;font-weight:700;color:#2f73e8;white-space:nowrap">すべて見る ›</span></div>'
+    + '<div style="display:flex;gap:16px;overflow-x:auto;padding:2px 2px 10px;scroll-behavior:smooth">'+seniors+'</div></section>';
+
+  // ---- 3 steps ----
+  var stepData = [
+    ['1','相談を見る','あなたの経験に合う相談を見つけます', icDoc],
+    ['2','回答を書く','自分の言葉でアドバイスを送ります', icPencil],
+    ['3','ありがとうが届く','後輩からの「ありがとう」がやりがいになります', heart(22)]
+  ];
+  var arrow = '<div class="rs-hide-sm" style="flex:0 0 auto;display:flex;align-items:center;padding:0 4px;color:#bcd0ee"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>';
+  var stepCards = stepData.map(function(s, idx){
+    var card = '<div style="flex:1;min-width:220px;background:#fff;border:1px solid #e7edf6;border-radius:16px;padding:22px 20px">'
+      + '<div style="display:flex;align-items:center;gap:13px">'
+      + '<div style="position:relative;width:48px;height:48px;border-radius:13px;background:#e8f1fe;color:#2f73e8;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+s[3]
+      + '<span style="position:absolute;top:-8px;left:-8px;width:22px;height:22px;border-radius:50%;background:#2f73e8;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff">'+s[0]+'</span></div>'
+      + '<div style="font-size:15px;font-weight:800;color:#14233f">'+s[1]+'</div></div>'
+      + '<p style="font-size:12.5px;color:#66738c;line-height:1.8;margin:14px 0 0">'+s[2]+'</p></div>';
+    return card + (idx < 2 ? arrow : '');
+  }).join('');
+  var stepSection = '<section class="rs-pad" style="max-width:1180px;margin:52px auto 0;padding:0 28px">'
+    + '<h2 style="margin:0 0 20px;font-size:20px;font-weight:900;color:#14233f">回答までの3ステップ</h2>'
+    + '<div style="display:flex;align-items:stretch;flex-wrap:wrap;gap:14px">'+stepCards+'</div></section>';
+
+  // ---- testimonials ----
+  var testi = [
+    ['自分の経験を誰かの役に立てることがこんなに嬉しいとは思いませんでした。回答するたびに、自分自身も成長できている気がします。','13回生・早稲田大学','就職・キャリア'],
+    ['後輩から「助かりました！」と言われると、本当にやってよかったなと思えます。小さな一言が誰かの人生を変えるかもしれないと思うと、やりがいがあります。','12回生・慶應義塾大学','大学生活'],
+    ['就活の時、先輩に助けてもらったので、今度は自分が恩返しできる番だと思って始めました。コミュニティの温かさを感じています。','14回生・上智大学','就職・キャリア']
+  ].map(function(t){
+    return '<div style="background:#fff;border:1px solid #e7edf6;border-radius:16px;padding:22px">'
+      + '<div style="font-size:34px;color:#2f73e8;font-weight:900;line-height:.5;height:20px;font-family:Georgia,serif">&ldquo;</div>'
+      + '<p style="font-size:13px;color:#3a465f;line-height:1.9;margin:12px 0 18px">'+esc(t[0])+'</p>'
+      + '<div style="display:flex;align-items:center;gap:10px">'+avatar(34,'#e6effe','#2f73e8')
+      + '<div><div style="font-size:12.5px;font-weight:700;color:#1b2942">'+esc(t[1])+'</div><div style="font-size:11px;color:#2f73e8;margin-top:2px">'+esc(t[2])+'</div></div></div></div>';
+  }).join('');
+  var testiSection = '<section class="rs-pad" style="max-width:1180px;margin:52px auto 0;padding:0 28px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><h2 style="margin:0;font-size:20px;font-weight:900;color:#14233f">先輩の声（体験談）</h2>'
+    + '<span data-toast="体験談の一覧は準備中です" style="cursor:pointer;font-size:12.5px;font-weight:700;color:#2f73e8;white-space:nowrap">もっと見る ›</span></div>'
+    + '<div class="rs-post" style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px">'+testi+'</div></section>';
+
+  // ---- bottom CTA ----
+  var cta = '<section class="rs-pad" style="max-width:1180px;margin:56px auto 0;padding:0 28px 20px">'
+    + '<div class="rs-stack-sm" style="position:relative;overflow:hidden;background:linear-gradient(120deg,#2f73e8 0%,#2560d0 100%);border-radius:20px;padding:40px 40px;display:flex;align-items:center;justify-content:space-between;gap:24px">'
+    + '<svg class="rs-hide-sm" width="150" height="150" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;right:24px;top:18px;pointer-events:none"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>'
+    + '<div style="position:relative;z-index:1"><div style="font-size:24px;font-weight:900;color:#fff;line-height:1.5">あなたの経験が、<br>誰かの未来になります。</div>'
+    + '<p style="font-size:13px;color:#dbe7ff;line-height:1.8;margin:14px 0 0">登録は1分で完了。上級生でも卒業生でも、今すぐ先輩として参加できます。</p></div>'
+    + '<div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:flex-start;gap:14px;flex-shrink:0">'
+    + '<button data-auth="signup" style="border:none;cursor:pointer;background:#f5cb4d;color:#3d2f06;font-weight:800;font-size:15px;padding:15px 34px;border-radius:12px">先輩として登録する</button>'
+    + '<span data-nav="browse" style="cursor:pointer;color:#fff;font-size:13px;font-weight:700">登録せずに相談を見る ›</span></div>'
+    + '</div></section>';
+
+  return '<div style="padding-bottom:60px">' + hero + stats + meritSection + seniorSection + stepSection + testiSection + cta + '</div>';
 }
 function waitingCount(){ var n = state.consultations.filter(function(c){ return c.answers.length===0; }).length; return n>0 ? n : 128; }
 
