@@ -123,6 +123,10 @@
   details.faq[open] summary{color:#1f5fd0}
   details.faq[open] summary .chev{transform:rotate(180deg)}
   details.faq .ans{padding:0 18px 16px;font-size:13.5px;color:#5a6678;line-height:1.85}
+  /* home FAQ 2-column grid (幅を他セクションと統一) */
+  .rs-faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+  .rs-faq-grid > details.faq{margin-bottom:0}
+  @media (max-width:760px){ .rs-faq-grid{grid-template-columns:1fr} }
 
   /* scroll reveal (ホーム) */
   .reveal{opacity:0;transform:translateY(26px);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.7,.3,1)}
@@ -708,7 +712,7 @@ function featuresHTML(){
       + '<p style="font-size:13px;color:#5a6678;line-height:1.85;margin:14px 0 0">'+f[2]+'</p></div>';
   }).join('');
   return '<section class="rs-pad reveal" style="max-width:1180px;margin:84px auto 0;padding:0 28px">'
-    + '<h2 style="margin:0 0 34px;font-size:22px;font-weight:900;color:#1b2942;text-align:center">SenpaiNetの特徴</h2>'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px"><h2 style="margin:0;font-size:20px;font-weight:700;color:#1b2942">SenpaiNetの特徴</h2></div>'
     + '<div class="rs-pop" style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px">'+cards+'</div></section>';
 }
 
@@ -787,9 +791,9 @@ function homeHTML(){
     + state.outreachPosts.slice(0,2).map(function(p){ var k=outreachKinds[p.kind]||outreachKinds.other; return '<div data-nav="outreach" style="background:#fff;border:1px solid #e7edf6;border-radius:14px;padding:18px 20px;cursor:pointer" class="card-hover"><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-size:11px;font-weight:700;color:'+k.color+';background:'+k.bg+';padding:3px 10px;border-radius:8px">'+k.label+'</span>'+(p.deadline?'<span style="font-size:11px;font-weight:700;color:#e0568a;background:#fde8f0;padding:3px 10px;border-radius:8px">締切 '+esc(p.deadline)+'</span>':'')+'</div><div style="font-size:15.5px;font-weight:800;color:#1b2942;margin:10px 0 6px">'+esc(p.title)+'</div><div style="font-size:12.5px;color:#66738c;line-height:1.7;max-height:44px;overflow:hidden">'+esc(p.body)+'</div><div style="font-size:11.5px;color:#94a1b5;margin-top:10px">'+p.kaisei+'回生'+(p.univ?'・'+esc(p.univ):'')+' ・ 反応 '+p.responses+'件</div></div>'; }).join('')
     + '</div></section>'
     // FAQ preview (抜粋) — full list is on the サポート page
-    + '<section class="rs-pad reveal" style="max-width:820px;margin:84px auto 100px;padding:0 28px">'
+    + '<section class="rs-pad reveal" style="max-width:1180px;margin:84px auto 100px;padding:0 28px">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px"><h2 style="margin:0;font-size:20px;font-weight:700;color:#1b2942">よくある質問</h2><span data-support="faq" style="font-size:13px;font-weight:700;color:#2f73e8;cursor:pointer">すべて見る ›</span></div>'
-    + faqList.slice(0,4).map(function(f){ return '<details class="faq"><summary>Q. '+esc(f[0])+'<span class="chev">'+svg.chevDown+'</span></summary><div class="ans">'+esc(f[1])+'</div></details>'; }).join('')
+    + '<div class="rs-faq-grid">'+faqList.slice(0,4).map(function(f){ return '<details class="faq"><summary>Q. '+esc(f[0])+'<span class="chev">'+svg.chevDown+'</span></summary><div class="ans">'+esc(f[1])+'</div></details>'; }).join('')+'</div>'
     + '</section>'
     + footerHTML()
     + '</main>';
