@@ -123,10 +123,6 @@
   details.faq[open] summary{color:#1f5fd0}
   details.faq[open] summary .chev{transform:rotate(180deg)}
   details.faq .ans{padding:0 18px 16px;font-size:13.5px;color:#5a6678;line-height:1.85}
-  /* home FAQ 2-column grid (幅を他セクションと統一) */
-  .rs-faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
-  .rs-faq-grid > details.faq{margin-bottom:0}
-  @media (max-width:760px){ .rs-faq-grid{grid-template-columns:1fr} }
 
   /* scroll reveal (ホーム) */
   .reveal{opacity:0;transform:translateY(26px);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.7,.3,1)}
@@ -793,7 +789,13 @@ function homeHTML(){
     // FAQ preview (抜粋) — full list is on the サポート page
     + '<section class="rs-pad reveal" style="max-width:1180px;margin:84px auto 100px;padding:0 28px">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px"><h2 style="margin:0;font-size:20px;font-weight:700;color:#1b2942">よくある質問</h2><span data-support="faq" style="font-size:13px;font-weight:700;color:#2f73e8;cursor:pointer">すべて見る ›</span></div>'
-    + '<div class="rs-faq-grid">'+faqList.slice(0,4).map(function(f){ return '<details class="faq"><summary>Q. '+esc(f[0])+'<span class="chev">'+svg.chevDown+'</span></summary><div class="ans">'+esc(f[1])+'</div></details>'; }).join('')+'</div>'
+    + faqList.slice(0,4).map(function(f){ return '<details class="faq"><summary>Q. '+esc(f[0])+'<span class="chev">'+svg.chevDown+'</span></summary><div class="ans">'+esc(f[1])+'</div></details>'; }).join('')
+    + '<div class="rs-stack-sm" style="display:flex;align-items:center;justify-content:space-between;gap:20px;background:#eef4ff;border:1px solid #cfe0fb;border-radius:16px;padding:22px 28px;margin-top:22px">'
+    + '<div style="display:flex;align-items:center;gap:18px">'
+    + '<svg width="66" height="66" viewBox="0 0 72 72" style="flex-shrink:0"><circle cx="36" cy="37" r="30" fill="#d5e5ff"/><circle cx="36" cy="31" r="11" fill="#2f73e8"/><path d="M18 57c0-10 8-15 18-15s18 5 18 15z" fill="#2f73e8"/><circle cx="53" cy="20" r="11" fill="#fff" stroke="#bcd3f5" stroke-width="1.5"/><text x="53" y="25" text-anchor="middle" font-size="15" font-weight="800" fill="#2f73e8">?</text></svg>'
+    + '<div><div style="font-size:15.5px;font-weight:800;color:#1f5fd0">その他、使い方で困ったら</div><p style="font-size:12.5px;color:#51627e;line-height:1.8;margin:6px 0 0">ご不明な点があれば、お問い合わせフォームからお気軽にご連絡ください。</p></div></div>'
+    + '<button data-support="contact" style="flex-shrink:0;cursor:pointer;border:none;background:#2f73e8;color:#fff;font-weight:700;font-size:14px;padding:13px 26px;border-radius:11px;white-space:nowrap">お問い合わせはこちら</button>'
+    + '</div>'
     + '</section>'
     + footerHTML()
     + '</main>';
