@@ -260,7 +260,7 @@ var state = {
     { id:'cp1', group:'shukatsu', category:'shukatsu', title:'サマーインターン、何社応募しましたか？', kaisei:14, univ:'早稲田大学', body:'そろそろサマーインターンの応募が始まりますね！みなさんはどのくらいの企業に応募する予定ですか？業界や職種もぜひ教えてください！', likes:87, liked:false, replies:22, time:'3時間前', bookmarked:false },
     { id:'cp1b', group:'shukatsu', category:'shukatsu', title:'ES添削をお願いしたいです！', kaisei:14, univ:'早稲田大学', body:'ガクチカと自己PRを書いたのですが、なかなか自信が持てなくて…どなたか添削していただけないでしょうか？よろしくお願いします！', likes:24, liked:false, replies:8, time:'2時間前', bookmarked:false },
     { id:'cp2', group:'shukatsu', category:'shukatsu', title:'OB訪問のアポの取り方', kaisei:13, univ:'横浜国立大学', body:'OB訪問のアポの取り方で悩んでいます。高校の先輩でこの会社にいる方いませんか？', likes:4, liked:false, replies:3, time:'1日前', bookmarked:false },
-    { id:'cp3', group:'daigaku', category:'daigaku', title:'自炊が続きません…', kaisei:14, univ:'京都大学', body:'一人暮らし、自炊が続かない…。おすすめの作り置きレシピあれば教えてください🍳', likes:12, liked:false, replies:9, time:'5時間前', bookmarked:false },
+    { id:'cp3', group:'daigaku', category:'daigaku', title:'自炊が続きません…', kaisei:14, univ:'京都大学', body:'一人暮らしで自炊がなかなか続きません。作り置きのコツやおすすめのレシピがあれば教えてほしいです。', likes:12, liked:false, replies:9, time:'5時間前', bookmarked:false },
     { id:'cp4', group:'daigaku', category:'daigaku', title:'文系のゼミ選び、迷い中', kaisei:13, univ:'明治大学', body:'2年でゼミ選び中。文系で楽しかったゼミの話が聞きたいです。', likes:6, liked:false, replies:4, time:'2日前', bookmarked:false },
     { id:'cp5', group:'network', category:'doso', title:'IT系オンライン交流会やりませんか', kaisei:11, univ:'東京大学', body:'IT系で働いてる卒業生でオンライン交流会やりませんか？回生問わず募集です。', likes:15, liked:false, replies:7, time:'3時間前', bookmarked:false },
     { id:'cp6', group:'kaisei', category:'doso', title:'同窓会の幹事やります！', kaisei:14, univ:'大阪大学', body:'同窓会の幹事やります！今年の年末、母校の近くで集まれたらと思っています。', likes:9, liked:false, replies:6, time:'6時間前', bookmarked:false },
@@ -1150,7 +1150,7 @@ function detailHTML(){
     + '<div class="rs-stack-sm" style="display:flex;align-items:center;justify-content:space-between;gap:12px">'
     + '<div style="display:flex;align-items:center;gap:12px">'+avatar(44,'#e6effe','#2f73e8')
     + '<div><div style="font-size:14.5px;font-weight:700;color:#1b2942">在校生・'+gl+'</div>'
-    + '<div style="font-size:12px;color:#94a1b5;margin-top:3px">'+c.time+' ・ 👁 '+c.views.toLocaleString()+'</div></div></div>'
+    + '<div style="font-size:12px;color:#94a1b5;margin-top:3px;display:flex;align-items:center;gap:5px">'+c.time+' ・ <span style="display:inline-flex;align-items:center;gap:4px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>'+c.views.toLocaleString()+'</span></div></div></div>'
     + '<span style="font-size:11.5px;font-weight:700;color:#0ea5a9;background:#d9f3ee;padding:6px 14px;border-radius:10px;white-space:nowrap">匿名で相談</span></div>'
     + '<p style="font-size:14.5px;color:#3a465f;line-height:1.95;margin:18px 0 0;white-space:pre-wrap">'+esc(c.body)+'</p>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">'+tagChips(c.category)+'</div>'
@@ -1845,7 +1845,7 @@ function trendingPostHTML(){
     + '<div class="num" style="width:52px;height:52px;border-radius:14px;background:#ef6c2a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:19px">'+top.likes+'</div>'
     + '<span style="font-size:9.5px;color:#c26a1f;font-weight:700">いいね</span></div>'
     + '<div style="flex:1;min-width:0">'
-    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:14px">🔥</span><span style="font-size:12.5px;font-weight:800;color:#c26a1f">今日の人気投稿</span></div>'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="display:flex;color:#e08a2a"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span><span style="font-size:12.5px;font-weight:800;color:#c26a1f">今日の人気投稿</span></div>'
     + (c?'<span style="font-size:10.5px;font-weight:700;color:'+c.color+';background:#fff;padding:3px 10px;border-radius:8px">'+c.label+'</span>':'')
     + '<div style="font-size:16px;font-weight:800;color:#1b2942;margin:9px 0 6px">'+esc(top.title||'')+'</div>'
     + '<p style="font-size:13px;color:#5a6678;line-height:1.75;margin:0;max-width:560px">'+esc(top.body)+'</p>'
@@ -2486,15 +2486,18 @@ function adminSeniors(){
     + admCard('卒業生一覧（'+seniors.length+'人）','', admTable(['ユーザー','回生','回答','登録','状態','操作'], rows));
 }
 
+function admActivityRows(rows){
+  return rows.map(function(a){ return '<div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #eef1f7"><span style="width:32px;height:32px;border-radius:9px;background:'+a[2]+';color:'+a[1]+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+admSvg(a[0],16)+'</span><div style="flex:1;font-size:13px;color:#3a465f"><b style="color:#1b2942">'+a[3]+'</b> '+a[4]+'</div><span style="font-size:11.5px;color:#bcc6d6;white-space:nowrap">'+a[5]+'</span></div>'; }).join('');
+}
 function adminActivity(){
-  var items = [
-    ['⚙️','Admin','がお知らせ「【重要】システムメンテナンスのお知らせ」を公開しました','5分前'],
-    ['👤','新規ユーザー','が23人登録しました','1時間前'],
-    ['🚩','Admin','が通報された投稿を1件削除しました','2時間前'],
-    ['📢','Admin','が先輩からのお知らせを1件承認しました','4時間前'],
-    ['✏️','Admin','がイベント「OB・OG交流会」を作成しました','昨日'],
-    ['🛠️','システム','が定期バックアップを完了しました','昨日']
-  ].map(function(a){ return '<div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #eef1f7"><span style="width:32px;height:32px;border-radius:50%;background:#eef2f8;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">'+a[0]+'</span><div style="flex:1;font-size:13px;color:#3a465f"><b style="color:#1b2942">'+a[1]+'</b> '+a[2]+'</div><span style="font-size:11.5px;color:#bcc6d6;white-space:nowrap">'+a[3]+'</span></div>'; }).join('');
+  var items = admActivityRows([
+    [admP.mega,'#2f73e8','#e8f1fe','Admin','がお知らせ「【重要】システムメンテナンスのお知らせ」を公開しました','5分前'],
+    [admP.userplus,'#1e9e63','#e7f5ee','新規ユーザー','が23人登録しました','1時間前'],
+    [admP.flag,'#d98324','#fdeddb','Admin','が通報された投稿を1件削除しました','2時間前'],
+    [admP.mega,'#7c5cf0','#efeafe','Admin','が先輩からのお知らせを1件承認しました','4時間前'],
+    [admP.cal,'#2f73e8','#e8f1fe','Admin','がイベント「OB・OG交流会」を作成しました','昨日'],
+    [admP.db,'#5a6675','#eef1f7','システム','が定期バックアップを完了しました','昨日']
+  ]);
   return admPageHead('アクティビティログ','運営操作やシステムの記録を確認できます。')
     + admCard('最近のアクティビティ','', items);
 }
@@ -2586,17 +2589,19 @@ function adminDashboard(){
   var head = '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px">'
     + '<div><h1 style="margin:0 0 4px;font-size:23px;font-weight:900;color:#14233f">ダッシュボード</h1><p style="margin:0;font-size:13px;color:#66738c">SenpaiNetの運営状況を一目で確認できます。</p></div>'
     + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
-    + '<span data-toast="期間の変更は準備中です" style="cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:#3a465f;background:#fff;border:1px solid #dbe2ec;border-radius:9px;padding:9px 14px">📅 2025/05/18 - 2025/05/24 ⌄</span>'
-    + '<span data-toast="エクスポートは準備中です" style="cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:#fff;background:#2f73e8;border-radius:9px;padding:9px 16px">⬇ エクスポート</span></div></div>';
+    + '<span data-toast="期間の変更は準備中です" style="cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:#3a465f;background:#fff;border:1px solid #dbe2ec;border-radius:9px;padding:9px 14px"><span style="display:flex;color:#94a1b5">'+admSvg(admP.cal,15)+'</span>2025/05/18 - 2025/05/24<span style="color:#94a1b5">⌄</span></span>'
+    + '<span data-toast="エクスポートは準備中です" style="cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:#fff;background:#2f73e8;border-radius:9px;padding:9px 16px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 11l5 5 5-5M5 21h14"/></svg>エクスポート</span></div></div>';
 
   return head
     + '<div class="admin2-kpis" style="margin-bottom:18px">'+kpis+'</div>'
     + charts + '<div style="height:18px"></div>'
     + lower + '<div style="height:18px"></div>'
     + admCard('アクティビティログ', admActionBtn('すべて見る','data-admin-tab="activity"',''),
-        [['⚙️','Admin','がお知らせ「【重要】システムメンテナンスのお知らせ」を公開しました','5分前'],
-         ['👤','新規ユーザー','が23人登録しました','1時間前'],
-         ['📢','Admin','が先輩からのお知らせを1件承認しました','4時間前']].map(function(a){ return '<div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #eef1f7"><span style="width:32px;height:32px;border-radius:50%;background:#eef2f8;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">'+a[0]+'</span><div style="flex:1;font-size:13px;color:#3a465f"><b style="color:#1b2942">'+a[1]+'</b> '+a[2]+'</div><span style="font-size:11.5px;color:#bcc6d6;white-space:nowrap">'+a[3]+'</span></div>'; }).join(''));
+        admActivityRows([
+          [admP.mega,'#2f73e8','#e8f1fe','Admin','がお知らせ「【重要】システムメンテナンスのお知らせ」を公開しました','5分前'],
+          [admP.userplus,'#1e9e63','#e7f5ee','新規ユーザー','が23人登録しました','1時間前'],
+          [admP.mega,'#7c5cf0','#efeafe','Admin','が先輩からのお知らせを1件承認しました','4時間前']
+        ]));
 }
 
 function adminConsultations(){
@@ -2970,6 +2975,11 @@ function wire(){
 function postValid(){ return !!(state.pcat && state.ptitle.trim() && state.pbody.trim()); }
 
 /* ============ BOOT ============ */
+// 既知の画面へは #hash で直接アクセスできる（例: #admin で運営コンソール）
+var KNOWN_SCREENS = { home:1, news:1, community:1, outreach:1, browse:1, post:1, alumni:1, howto:1, mypage:1, support:1, terms:1, privacy:1, admin:1 };
+function applyHash(){ var h=(location.hash||'').replace(/^#/,''); if(KNOWN_SCREENS[h]){ state.screen=h; if(h==='admin') state.adminTab='dashboard'; } }
+applyHash();
+window.addEventListener('hashchange', function(){ applyHash(); render(); toTop(); });
 setupDelegation();
 render();
 
