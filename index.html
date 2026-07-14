@@ -71,6 +71,10 @@
   .cm-dash-grid{display:grid;grid-template-columns:220px minmax(0,1fr) 260px;gap:22px;align-items:start}
   @media (max-width:1080px){ .cm-dash-grid{grid-template-columns:1fr} .cm-dash-side{display:none} }
 
+  /* admin login spinner */
+  .sn-spin{width:38px;height:38px;border-radius:50%;border:4px solid #dbe7fb;border-top-color:#2f73e8;animation:sn-rot .8s linear infinite}
+  @keyframes sn-rot{to{transform:rotate(360deg)}}
+
   /* admin console v2 */
   .admin2-body{display:flex;flex:1;min-height:0}
   .admin2-side{width:250px;flex-shrink:0;background:#0f1c33;display:flex;flex-direction:column}
@@ -294,6 +298,8 @@ var state = {
   ],
   // ---- 運営（管理者）コンソール ----
   adminTab: 'dashboard',
+  // Firebase 認証（Googleログイン＋招待制の許可リスト）
+  authReady: false, authConfigured: false, authUser: null, adminAuthorized: false,
   adminUsers: [
     { id:'au1', handle:'匿名ユーザー #1042', kaisei:20, role:'在校生', posts:5, answers:0, joined:'2026-04', status:'active' },
     { id:'au2', handle:'匿名ユーザー #0871', kaisei:17, role:'在校生', posts:3, answers:12, joined:'2025-06', status:'active' },
@@ -2739,6 +2745,58 @@ function adminReports(){
     + admCard('通報一覧', extra, admTable(['対象','内容','理由','通報者','日時','状態','操作'], rows));
 }
 
+// 管理画面のトップバーに表示するアカウント（ログイン中なら実アカウント、未設定ならデモ表示）
+function adminAccountChip(){
+  var u = state.authUser;
+  if(u){
+    var nm = u.name || u.email || '';
+    var initial = (nm || '?').charAt(0).toUpperCase();
+    var av = u.photo
+      ? '<img src="'+esc(u.photo)+'" referrerpolicy="no-referrer" style="width:32px;height:32px;border-radius:50%;object-fit:cover">'
+      : '<div style="width:32px;height:32px;border-radius:50%;background:#e8f1fe;color:#2f73e8;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px">'+esc(initial)+'</div>';
+    return '<div style="display:flex;align-items:center;gap:10px">'+av
+      + '<div style="line-height:1.25;max-width:180px;overflow:hidden"><div style="font-size:12.5px;font-weight:700;color:#1b2942;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(nm)+'</div><div style="font-size:10.5px;color:#94a1b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(u.email||'')+'</div></div>'
+      + '<span data-admin-logout style="cursor:pointer;font-size:11.5px;font-weight:700;color:#2f73e8;margin-left:4px;white-space:nowrap">ログアウト</span></div>';
+  }
+  return '<span style="font-size:11px;font-weight:700;color:#c07a12;background:#fdf0dc;padding:5px 12px;border-radius:20px">Firebase未設定（デモ表示）</span>';
+}
+
+// 管理画面のログイン用シェル（中央カード）
+function adminLoginShell(inner){
+  return '<div style="min-height:100vh;background:#eef2f8;display:flex;align-items:center;justify-content:center;padding:24px">'
+    + '<div style="width:100%;max-width:430px;background:#fff;border:1px solid #e5eaf2;border-radius:20px;padding:38px 34px;text-align:center;box-shadow:0 24px 60px rgba(15,23,42,.10)">'
+    + '<div style="display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:6px"><div style="width:34px;height:34px;border-radius:9px;background:#2f73e8;color:#fff;display:flex;align-items:center;justify-content:center">'+admSvg(admP.cap,19)+'</div><span style="font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:800;font-size:19px;color:#14233f">SenpaiNet</span><span style="font-size:13px;font-weight:700;color:#94a1b5">Admin</span></div>'
+    + inner + '</div></div>';
+}
+
+// 認証ゲート：未認証/未許可なら管理コンソールを表示しない
+function adminGateHTML(){
+  if(!state.authReady){
+    return adminLoginShell('<div style="padding:24px 0 6px"><div class="sn-spin" style="margin:0 auto 16px"></div><div style="font-size:13.5px;color:#66738c">認証を確認しています…</div></div>');
+  }
+  // 未設定：Firebase設定前は誰でも閲覧できるデモ表示（設定後にゲートが有効化）
+  if(!state.authConfigured){
+    return adminHTML();
+  }
+  if(!state.authUser){
+    var gBtn = '<button data-admin-login style="width:100%;margin-top:22px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:10px;background:#fff;border:1.5px solid #dbe2ec;color:#3a465f;font-weight:700;font-size:14px;padding:13px;border-radius:11px">'
+      + '<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.7-2 5-4.4 6.6v5.5h7.1c4.2-3.8 6.6-9.5 6.6-16.1z"/><path fill="#34A853" d="M24 46c6 0 11-2 14.6-5.4l-7.1-5.5c-2 1.3-4.5 2.1-7.5 2.1-5.8 0-10.7-3.9-12.4-9.1H4.3v5.7C7.9 41 15.3 46 24 46z"/><path fill="#FBBC05" d="M11.6 27.1c-.4-1.3-.7-2.7-.7-4.1s.2-2.8.7-4.1v-5.7H4.3C2.8 16.1 2 19 2 22.9s.8 6.8 2.3 9.7l7.3-5.5z"/><path fill="#EA4335" d="M24 9.9c3.3 0 6.2 1.1 8.5 3.3l6.3-6.3C35 3.4 30 1.4 24 1.4 15.3 1.4 7.9 6.4 4.3 13.2l7.3 5.7C13.3 13.7 18.2 9.9 24 9.9z"/></svg>'
+      + 'Googleでログイン</button>';
+    return adminLoginShell('<h1 style="font-size:18px;font-weight:900;color:#14233f;margin:20px 0 8px">運営コンソール</h1>'
+      + '<p style="font-size:13px;color:#66738c;line-height:1.8;margin:0">招待された運営メンバーのみアクセスできます。<br>Googleアカウントでログインしてください。</p>'
+      + gBtn
+      + '<div data-admin-back style="margin-top:16px;font-size:12.5px;font-weight:700;color:#94a1b5;cursor:pointer">サイトに戻る</div>');
+  }
+  if(!state.adminAuthorized){
+    return adminLoginShell('<div style="width:56px;height:56px;border-radius:50%;background:#fbe4e2;color:#c0392b;display:flex;align-items:center;justify-content:center;margin:22px auto 0"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>'
+      + '<h1 style="font-size:17px;font-weight:900;color:#14233f;margin:16px 0 8px">アクセス権限がありません</h1>'
+      + '<p style="font-size:13px;color:#66738c;line-height:1.8;margin:0">このアカウント（<b style="color:#3a465f">'+esc(state.authUser.email||'')+'</b>）は<br>運営メンバーに招待されていません。<br>管理者に招待を依頼してください。</p>'
+      + '<button data-admin-logout style="width:100%;margin-top:22px;cursor:pointer;background:#2f73e8;border:none;color:#fff;font-weight:700;font-size:13.5px;padding:12px;border-radius:11px">別のアカウントでログイン</button>'
+      + '<div data-admin-back style="margin-top:14px;font-size:12.5px;font-weight:700;color:#94a1b5;cursor:pointer">サイトに戻る</div>');
+  }
+  return adminHTML();
+}
+
 function adminHTML(){
   var pending = state.adminReports.filter(function(r){ return r.status==='pending'; }).length;
   var groups = [
@@ -2794,7 +2852,7 @@ function adminHTML(){
     + '<span style="font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:800;font-size:17px;color:#14233f">SenpaiNet</span><span style="font-size:13px;font-weight:700;color:#94a1b5">Admin</span></div>'
     + '<div style="display:flex;align-items:center;gap:18px">'
     + '<div data-toast="通知は準備中です" style="position:relative;cursor:pointer;color:#66738c;display:flex">'+admSvg(admP.bell,20)+'<span style="position:absolute;top:-6px;right:-6px;background:#e0568a;color:#fff;font-size:9px;font-weight:800;width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center">3</span></div>'
-    + '<div data-toast="アカウントメニューは準備中です" style="display:flex;align-items:center;gap:8px;cursor:pointer"><div style="width:32px;height:32px;border-radius:50%;background:#e8f1fe;color:#2f73e8;display:flex;align-items:center;justify-content:center">'+admSvg(admP.person,18)+'</div><span style="font-size:13px;font-weight:700;color:#1b2942">Admin</span><span style="color:#94a1b5;font-size:11px">▾</span></div>'
+    + adminAccountChip()
     + '</div></header>';
 
   return '<div style="min-height:100vh;display:flex;flex-direction:column;background:#f1f4f9">'
@@ -2843,7 +2901,7 @@ function observeReveals(){
 function render(){
   var app = document.getElementById('app');
   if(state.screen==='admin'){
-    app.innerHTML = '<div style="min-height:100vh;background:#eef2f8">' + adminHTML() + '</div>';
+    app.innerHTML = '<div style="min-height:100vh;background:#eef2f8">' + adminGateHTML() + '</div>';
   } else {
     app.innerHTML = '<div style="min-height:100vh;background:#f4f8ff">' + headerHTML() + screenHTML() + '</div>' + fabHTML();
   }
@@ -2859,7 +2917,7 @@ function on(sel,evt,fn){ var n=document.getElementById(sel); if(n) n.addEventLis
 // handlers across re-renders, which would fire toggles multiple times.
 function setupDelegation(){
   document.body.addEventListener('click', function(e){
-    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-tab],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-menu]');
+    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-menu]');
     if(!t) return;
     if(t.hasAttribute('data-like') || t.hasAttribute('data-bookmark') || t.hasAttribute('data-helpful')) e.stopPropagation();
 
@@ -2939,6 +2997,8 @@ function setupDelegation(){
     if(t.hasAttribute('data-notif-read')){ state.notifications.forEach(function(n){ n.unread=false; }); closeModal(); render(); toast('すべて既読にしました'); return; }
     // ---- 運営（管理者）コンソール ----
     if(t.hasAttribute('data-admin')){ closeModal(); state.adminTab='dashboard'; go('admin'); return; }
+    if(t.hasAttribute('data-admin-login')){ if(window.snAuthApi && window.snAuthApi.signIn){ window.snAuthApi.signIn(); } else { toast('Firebaseが未設定です'); } return; }
+    if(t.hasAttribute('data-admin-logout')){ if(window.snAuthApi && window.snAuthApi.signOut){ window.snAuthApi.signOut(); } state.authUser=null; state.adminAuthorized=false; render(); return; }
     if(t.hasAttribute('data-admin-back')){ go('home'); return; }
     if(t.hasAttribute('data-admin-tab')){ state.adminTab = t.getAttribute('data-admin-tab'); render(); toTop(); return; }
     if(t.hasAttribute('data-admin-hide')){ var ac=find(t.getAttribute('data-admin-hide')); if(ac){ ac.hidden=!ac.hidden; render(); toast(ac.hidden?'相談を非表示にしました':'相談を再表示しました'); } return; }
@@ -3037,11 +3097,99 @@ var KNOWN_SCREENS = { home:1, news:1, community:1, outreach:1, browse:1, post:1,
 function applyHash(){ var h=(location.hash||'').replace(/^#/,''); if(KNOWN_SCREENS[h]){ state.screen=h; if(h==='admin') state.adminTab='dashboard'; } }
 applyHash();
 window.addEventListener('hashchange', function(){ applyHash(); render(); toTop(); });
+
+// Firebase Auth のコールバック（別の <script type="module"> から呼ばれる）
+window.snOnAuthChange = function(user, authorized, configured){
+  state.authUser = user || null;
+  state.adminAuthorized = !!authorized;
+  state.authConfigured = configured !== false;
+  state.authReady = true;
+  if(state.screen === 'admin') render();
+};
+window.snAuthError = function(msg){ toast('ログインに失敗しました'); };
+// Firebase モジュールが読み込めない/未設定でも管理画面が固まらないようにする保険
+setTimeout(function(){ if(!state.authReady){ state.authReady = true; state.authConfigured = false; if(state.screen === 'admin') render(); } }, 3500);
+
 setupDelegation();
 render();
 
 })();
 
+</script>
+<!-- ============================================================
+     Firebase 認証（Googleログイン＋招待制の許可リスト）
+     管理コンソール（#admin）を、招待された運営メンバーだけに限定します。
+
+     ▼ セットアップ手順（一度だけ）
+       1. https://console.firebase.google.com でプロジェクトを作成
+       2. Authentication → Sign-in method で「Google」を有効化
+       3. Authentication → Settings → 承認済みドメイン に
+          「ykonishi2006.github.io」（と、ローカル確認用に「localhost」）を追加
+       4. プロジェクトの設定 → マイアプリ（ウェブ）の firebaseConfig を下の
+          firebaseConfig に貼り付け（apiKey 等は公開されても問題ない値です）
+       5. 下の ADMIN_EMAILS に、閲覧を許可する運営メンバーの Gmail を追加
+          （任意：Firestore の admins/{email} に {allowed:true} でも可）
+
+     ※注意：これは「UIのゲート＋本人確認」です。本アプリの管理データは
+       すべてクライアント側のデモデータのため、これ自体は完全なアクセス制御
+       ではありません。実データを守るには Firestore にデータを置き、
+       セキュリティルールで admins のみ許可する構成が必要です。
+     ============================================================ -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+  // ▼ Firebase コンソールの firebaseConfig をここに貼り付けてください
+  const firebaseConfig = {
+    apiKey: "REPLACE_WITH_YOUR_API_KEY",
+    authDomain: "REPLACE_WITH_YOUR_PROJECT.firebaseapp.com",
+    projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
+    appId: "REPLACE_WITH_YOUR_APP_ID"
+  };
+  // ▼ 閲覧を許可する運営メンバー（招待した人）の Gmail を追加
+  const ADMIN_EMAILS = ["2006ykonishi@gmail.com"];
+
+  const unconfigured = !firebaseConfig.apiKey || firebaseConfig.apiKey.indexOf("REPLACE") === 0;
+
+  if (unconfigured) {
+    // 未設定：デモ表示（誰でも閲覧可）。設定するとゲートが有効になります。
+    if (window.snOnAuthChange) window.snOnAuthChange(null, false, false);
+  } else {
+    try {
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+      const provider = new GoogleAuthProvider();
+      try { await setPersistence(auth, browserLocalPersistence); } catch (e) {}
+
+      window.snAuthApi = {
+        signIn: async () => { try { await signInWithPopup(auth, provider); } catch (e) { if (window.snAuthError) window.snAuthError(e && e.message ? e.message : String(e)); } },
+        signOut: async () => { try { await signOut(auth); } catch (e) {} }
+      };
+
+      const allowList = ADMIN_EMAILS.map(e => e.toLowerCase());
+      async function isAuthorized(user) {
+        if (!user || !user.email) return false;
+        const email = user.email.toLowerCase();
+        if (allowList.indexOf(email) !== -1) return true;
+        // 任意：Firestore の admins/{email} に {allowed:true} があれば許可
+        try {
+          const snap = await getDoc(doc(db, "admins", email));
+          if (snap.exists() && snap.data() && snap.data().allowed) return true;
+        } catch (e) { /* Firestore 未設定/権限なしは無視して配列判定のみ */ }
+        return false;
+      }
+
+      onAuthStateChanged(auth, async (user) => {
+        const authorized = user ? await isAuthorized(user) : false;
+        const u = user ? { email: user.email, name: user.displayName || "", photo: user.photoURL || "" } : null;
+        if (window.snOnAuthChange) window.snOnAuthChange(u, authorized, true);
+      });
+    } catch (e) {
+      if (window.snOnAuthChange) window.snOnAuthChange(null, false, false);
+    }
+  }
 </script>
 <script>
 // Loading splash: play the animation, then fade out and remove.
