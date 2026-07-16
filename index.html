@@ -3140,15 +3140,17 @@ render();
   import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
   import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-  // ▼ Firebase コンソールの firebaseConfig をここに貼り付けてください
+  // Firebase プロジェクト senpainet-console の Web 設定（公開されても問題ない値）
   const firebaseConfig = {
-    apiKey: "REPLACE_WITH_YOUR_API_KEY",
-    authDomain: "REPLACE_WITH_YOUR_PROJECT.firebaseapp.com",
-    projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
-    appId: "REPLACE_WITH_YOUR_APP_ID"
+    apiKey: "AIzaSyDdoErF92Zk4tqZ9ELDFe8EYNzh6BRXcmo",
+    authDomain: "senpainet-console.firebaseapp.com",
+    projectId: "senpainet-console",
+    storageBucket: "senpainet-console.firebasestorage.app",
+    messagingSenderId: "898586525680",
+    appId: "1:898586525680:web:66416de3cecd569739a735"
   };
-  // ▼ 閲覧を許可する運営メンバー（招待した人）の Gmail を追加
-  const ADMIN_EMAILS = ["2006ykonishi@gmail.com"];
+  // ▼ 閲覧を許可する運営メンバー（招待した人）のメールを追加
+  const ADMIN_EMAILS = ["senpainet.iss@gmail.com"];
 
   const unconfigured = !firebaseConfig.apiKey || firebaseConfig.apiKey.indexOf("REPLACE") === 0;
 
