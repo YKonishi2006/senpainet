@@ -614,6 +614,8 @@ function addUserConsultation(){
   });
   // cid でマイページの「自分の相談」から相談ページを開けるようにする
   state.myPosts.unshift({ cid:id, category:state.pcat, title:state.ptitle.trim(), nAnswers:0, time:'たった今', status:'回答受付中' });
+  // Firestore に保存（全員に反映）。未設定/失敗時はローカルのみ。
+  if(window.snDb && window.snDb.addConsultation) window.snDb.addConsultation(state.consultations[0]);
 }
 function findCommunityPost(id){ for(var i=0;i<state.communityPosts.length;i++){ if(state.communityPosts[i].id===id) return state.communityPosts[i]; } return null; }
 function findOutreach(id){ for(var i=0;i<state.outreachPosts.length;i++){ if(state.outreachPosts[i].id===id) return state.outreachPosts[i]; } return null; }
@@ -753,7 +755,7 @@ function homeHTML(){
       + '<div style="font-size:11px;color:#9aa6ba">'+s[4]+'</div></div></div>';
   }).join('');
 
-  var popular = state.consultations.filter(function(c){return c.popular;}).slice(0,3).map(function(c){
+  var popular = state.consultations.filter(function(c){return c.popular && !c.hidden;}).slice(0,3).map(function(c){
     var m = cats[c.category];
     var likeColor = c.liked?'#e0568a':'#94a1b5';
     return '<div data-open="'+c.id+'" class="card-hover" style="background:#fff;border:1px solid #e7edf6;border-radius:16px;padding:18px;cursor:pointer">'
@@ -841,6 +843,7 @@ function footerHTML(){
 function browseFiltered(){
   var q = state.query.trim();
   var list = state.consultations.filter(function(c){
+    if(c.hidden) return false; // 運営が非表示にした相談は公開一覧から除外
     var catOk = state.activeCat==='all' || c.category===state.activeCat;
     // grade filter uses the asker's grade AT POSTING (frozen — does not shift year to year)
     var gradeOk = state.activeGrade==='all' || c.grade===state.activeGrade;
@@ -1010,7 +1013,7 @@ function postHTML(){
       + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span style="font-size:14px;font-weight:800;color:#14233f">よく選ばれているカテゴリ</span><span data-nav="browse" style="cursor:pointer;font-size:12px;font-weight:700;color:#2f73e8">もっと見る</span></div>'
       + popRows + '</div>';
 
-    var recent = state.consultations.slice(0,3).map(function(c){ var m=cats[c.category];
+    var recent = state.consultations.filter(function(c){return !c.hidden;}).slice(0,3).map(function(c){ var m=cats[c.category];
       return '<div data-open="'+c.id+'" style="padding:11px 2px;border-bottom:1px solid #f0f3f9;cursor:pointer">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span style="font-size:10.5px;font-weight:700;color:'+m.color+';background:'+m.bg+';padding:2px 9px;border-radius:7px">'+m.label+'</span><span style="font-size:11px;color:#94a1b5">'+c.time+'</span></div>'
         + '<div style="font-size:12.5px;font-weight:600;color:#1b2942;margin-top:6px;line-height:1.45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.title)+'</div></div>';
@@ -1116,8 +1119,8 @@ function statCell(label, val){ return '<div style="text-align:center;flex:1"><di
 
 function detailRightHTML(c){
   var gl = GRADE_LABELS[c.grade] || '';
-  var related = state.consultations.filter(function(x){ return x.id!==c.id && x.category===c.category; });
-  if(related.length < 3) related = related.concat(state.consultations.filter(function(x){ return x.id!==c.id && x.category!==c.category; }));
+  var related = state.consultations.filter(function(x){ return x.id!==c.id && !x.hidden && x.category===c.category; });
+  if(related.length < 3) related = related.concat(state.consultations.filter(function(x){ return x.id!==c.id && !x.hidden && x.category!==c.category; }));
   related = related.slice(0, 4);
   var relHTML = related.map(function(x){ var mm=cats[x.category];
     return '<div data-open="'+x.id+'" class="rel-item" style="display:flex;gap:11px;padding:11px 8px;border-radius:11px;cursor:pointer">'
@@ -2443,7 +2446,7 @@ function consBrowseHTML(){
     + '<span style="font-size:12.5px;color:#94a1b5;white-space:nowrap">'+count+'件の相談</span></div>'
     + '<div id="qa-list" style="display:flex;flex-direction:column;gap:14px">'+browseNewListHTML()+'</div></div>';
 
-  var ranked=state.consultations.slice().sort(function(a,b){ return b.likes-a.likes; }).slice(0,5);
+  var ranked=state.consultations.filter(function(c){return !c.hidden;}).slice().sort(function(a,b){ return b.likes-a.likes; }).slice(0,5);
   var rankColors=['#f5a623','#7ea0c4','#c98a5b','#9aa6ba','#9aa6ba'];
   var rankHTML=ranked.map(function(c,i){ return '<div data-open="'+c.id+'" class="cm-side-item" style="display:flex;gap:11px;padding:10px 6px;border-radius:10px;cursor:pointer"><span class="num" style="width:22px;height:22px;border-radius:50%;background:'+rankColors[i]+';color:#fff;font-size:11.5px;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+(i+1)+'</span><div style="min-width:0"><div style="font-size:12.5px;font-weight:700;color:#1b2942;line-height:1.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.title)+'</div><div style="font-size:11px;color:#94a1b5;margin-top:3px">'+c.likes+'いいね ・ '+c.nAnswers+'回答</div></div></div>'; }).join('');
   var tips=[
@@ -3001,7 +3004,7 @@ function setupDelegation(){
     if(t.hasAttribute('data-admin-logout')){ if(window.snAuthApi && window.snAuthApi.signOut){ window.snAuthApi.signOut(); } state.authUser=null; state.adminAuthorized=false; render(); return; }
     if(t.hasAttribute('data-admin-back')){ go('home'); return; }
     if(t.hasAttribute('data-admin-tab')){ state.adminTab = t.getAttribute('data-admin-tab'); render(); toTop(); return; }
-    if(t.hasAttribute('data-admin-hide')){ var ac=find(t.getAttribute('data-admin-hide')); if(ac){ ac.hidden=!ac.hidden; render(); toast(ac.hidden?'相談を非表示にしました':'相談を再表示しました'); } return; }
+    if(t.hasAttribute('data-admin-hide')){ var ac=find(t.getAttribute('data-admin-hide')); if(ac){ ac.hidden=!ac.hidden; if(window.snDb && window.snDb.updateConsultation) window.snDb.updateConsultation(ac.id, {hidden: ac.hidden}); render(); toast(ac.hidden?'相談を非表示にしました':'相談を再表示しました'); } return; }
     if(t.hasAttribute('data-admin-user')){ var au=findById(state.adminUsers, t.getAttribute('data-admin-user')); if(au){ au.status=au.status==='suspended'?'active':'suspended'; render(); toast(au.status==='suspended'?'ユーザーを利用停止にしました':'利用停止を解除しました'); } return; }
     if(t.hasAttribute('data-admin-news-del')){ var nid=t.getAttribute('data-admin-news-del'); state.newsItems=state.newsItems.filter(function(n){ return n.id!==nid; }); render(); toast('お知らせを削除しました'); return; }
     if(t.hasAttribute('data-admin-sn-del')){ var sid=t.getAttribute('data-admin-sn-del'); state.senpaiNews=state.senpaiNews.filter(function(n){ return n.id!==sid; }); render(); toast('先輩のお知らせを削除しました'); return; }
@@ -3107,6 +3110,12 @@ window.snOnAuthChange = function(user, authorized, configured){
   if(state.screen === 'admin') render();
 };
 window.snAuthError = function(msg){ toast('ログインに失敗しました'); };
+// Firestore から相談一覧を受け取って差し替え（起動直後に一度）
+window.snOnConsultations = function(list){
+  if(!list || !list.length) return;
+  state.consultations = list;
+  render();
+};
 // Firebase モジュールが読み込めない/未設定でも管理画面が固まらないようにする保険
 setTimeout(function(){ if(!state.authReady){ state.authReady = true; state.authConfigured = false; if(state.screen === 'admin') render(); } }, 3500);
 
@@ -3138,7 +3147,7 @@ render();
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, collection, getDocs, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
   // Firebase プロジェクト senpainet-console の Web 設定（公開されても問題ない値）
   const firebaseConfig = {
@@ -3169,6 +3178,26 @@ render();
         signIn: async () => { try { await signInWithPopup(auth, provider); } catch (e) { if (window.snAuthError) window.snAuthError(e && e.message ? e.message : String(e)); } },
         signOut: async () => { try { await signOut(auth); } catch (e) {} }
       };
+
+      // ---- Firestore データ層（相談 consultations）----
+      // 公開サイトは Firestore から相談を読み込み、投稿は書き込み、
+      // 運営の非表示/削除は Firestore に反映（＝全員に反映される本物の管理）。
+      window.snDb = {
+        addConsultation: async (o) => {
+          try { const d = Object.assign({}, o); delete d.liked; delete d.bookmarked; await setDoc(doc(db, "consultations", o.id), d); } catch (e) {}
+        },
+        updateConsultation: async (id, patch) => { try { await updateDoc(doc(db, "consultations", id), patch); } catch (e) {} },
+        deleteConsultation: async (id) => { try { await deleteDoc(doc(db, "consultations", id)); } catch (e) {} }
+      };
+      async function loadConsultations() {
+        try {
+          const snap = await getDocs(collection(db, "consultations"));
+          const list = [];
+          snap.forEach((ds) => { const o = ds.data() || {}; o.id = ds.id; o.liked = false; o.bookmarked = false; if (!Array.isArray(o.answers)) o.answers = []; list.push(o); });
+          if (list.length && window.snOnConsultations) window.snOnConsultations(list);
+        } catch (e) { /* 取得失敗時は組み込みのシードのまま */ }
+      }
+      loadConsultations();
 
       const allowList = ADMIN_EMAILS.map(e => e.toLowerCase());
       async function isAuthorized(user) {

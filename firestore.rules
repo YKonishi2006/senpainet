@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 運営メンバー判定：admins/{email} ドキュメントが存在すれば運営
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.token.email));
+    }
+
+    // 相談：公開読み取り／作成は誰でも（項目制限あり）／更新・削除は運営のみ
+    match /consultations/{id} {
+      allow read: if true;
+      allow create: if request.resource.data.title is string
+                    && request.resource.data.title.size() > 0
+                    && request.resource.data.title.size() <= 60
+                    && request.resource.data.body is string
+                    && request.resource.data.body.size() <= 4000;
+      allow update, delete: if isAdmin();
+    }
+
+    // 通報：作成は誰でも／閲覧・対応・削除は運営のみ
+    match /reports/{id} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // 運営メンバー：自分の許可確認のためだけ読み取り可。書き込みは不可（招待は管理者が別途）
+    match /admins/{email} {
+      allow read: if request.auth != null && request.auth.token.email == email;
+      allow write: if false;
+    }
+
+    // それ以外は既定で拒否
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
