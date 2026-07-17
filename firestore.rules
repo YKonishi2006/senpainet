@@ -20,6 +20,16 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // 回答：各相談のサブコレクション。公開読み取り／作成は誰でも（本文制限あり）／
+    //       編集・削除は運営のみ（他人の回答を消せない）
+    match /consultations/{cid}/answers/{aid} {
+      allow read: if true;
+      allow create: if request.resource.data.body is string
+                    && request.resource.data.body.size() > 0
+                    && request.resource.data.body.size() <= 4000;
+      allow update, delete: if isAdmin();
+    }
+
     // 通報：作成は誰でも／閲覧・対応・削除は運営のみ
     match /reports/{id} {
       allow create: if true;

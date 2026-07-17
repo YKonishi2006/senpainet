@@ -591,6 +591,8 @@ function submitAnswer(){
   var wasEmpty = c.answers.length === 0;
   c.answers.unshift({ kaisei:state.userKaisei, time:'たった今', body:t, helpful:0, marked:false, you:true, anon:!!state.answerAnon });
   c.nAnswers += 1;
+  // Firestore に保存（全員に共有）。未設定/失敗時はローカルのみ。
+  if(window.snDb && window.snDb.addAnswer) window.snDb.addAnswer(c.id, { kaisei:state.userKaisei, time:'たった今', body:t, helpful:0, anon:!!state.answerAnon, createdAt:Date.now() });
   // 初回回答なら「返信までの時間」を記録（→ 回答率・平均返信時間に反映）
   if(wasEmpty && c.firstReplyHours == null){
     var hrs = (Date.now() - (c.postedAt || Date.now())) / 3600000;
@@ -3147,7 +3149,7 @@ render();
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-  import { getFirestore, doc, getDoc, collection, getDocs, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, collection, collectionGroup, getDocs, setDoc, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
   // Firebase プロジェクト senpainet-console の Web 設定（公開されても問題ない値）
   const firebaseConfig = {
@@ -3184,16 +3186,31 @@ render();
       // 運営の非表示/削除は Firestore に反映（＝全員に反映される本物の管理）。
       window.snDb = {
         addConsultation: async (o) => {
-          try { const d = Object.assign({}, o); delete d.liked; delete d.bookmarked; await setDoc(doc(db, "consultations", o.id), d); } catch (e) {}
+          try { const d = Object.assign({}, o); delete d.liked; delete d.bookmarked; delete d.answers; await setDoc(doc(db, "consultations", o.id), d); } catch (e) {}
         },
         updateConsultation: async (id, patch) => { try { await updateDoc(doc(db, "consultations", id), patch); } catch (e) {} },
-        deleteConsultation: async (id) => { try { await deleteDoc(doc(db, "consultations", id)); } catch (e) {} }
+        deleteConsultation: async (id) => { try { await deleteDoc(doc(db, "consultations", id)); } catch (e) {} },
+        // 回答はサブコレクション consultations/{cid}/answers に保存（全員に共有）
+        addAnswer: async (cid, a) => { try { await addDoc(collection(db, "consultations", cid, "answers"), a); } catch (e) {} }
       };
       async function loadConsultations() {
         try {
           const snap = await getDocs(collection(db, "consultations"));
-          const list = [];
-          snap.forEach((ds) => { const o = ds.data() || {}; o.id = ds.id; o.liked = false; o.bookmarked = false; if (!Array.isArray(o.answers)) o.answers = []; list.push(o); });
+          const map = {}, list = [];
+          snap.forEach((ds) => { const o = ds.data() || {}; o.id = ds.id; o.liked = false; o.bookmarked = false; if (!Array.isArray(o.answers)) o.answers = []; map[ds.id] = o; list.push(o); });
+          // 回答をまとめて取得して各相談にひも付け（サブコレクションが正）
+          try {
+            const asnap = await getDocs(collectionGroup(db, "answers"));
+            const byC = {};
+            asnap.forEach((ad) => { const cid = ad.ref.parent.parent.id; (byC[cid] = byC[cid] || []).push(Object.assign({}, ad.data())); });
+            Object.keys(byC).forEach((cid) => {
+              if (!map[cid]) return;
+              const arr = byC[cid];
+              arr.sort((x, y) => (y.createdAt || 0) - (x.createdAt || 0));
+              arr.forEach((a) => { a.you = false; a.marked = false; if (a.helpful == null) a.helpful = 0; });
+              map[cid].answers = arr;
+            });
+          } catch (e) { /* 回答取得に失敗してもインラインのシードで表示 */ }
           if (list.length && window.snOnConsultations) window.snOnConsultations(list);
         } catch (e) { /* 取得失敗時は組み込みのシードのまま */ }
       }
