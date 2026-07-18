@@ -770,6 +770,26 @@ function homeHTML(){
       + '<span>'+c.time+'</span></div></div>';
   }).join('');
 
+  // ミッション/実績セクション（大きな角丸カード＋特大数値＋右にメッセージ）
+  var _ms = [
+    [st.total.toLocaleString(),'件','これまでに寄せられた相談'],
+    [st.senpai.toLocaleString(),'人','相談に答えた先輩'],
+    [String(st.rate),'%','先輩が答えた割合'],
+    [String(avgLabel),'時間','最初の回答までの平均']
+  ];
+  var _msItems = _ms.map(function(s,i){ return '<div style="margin:0 0 '+(i<3?'26px':'0')+'">'
+    + '<div style="font-size:44px;font-weight:900;color:#2f73e8;line-height:1;letter-spacing:-.02em"><span style="color:#bcd3f5">#</span>'+s[0]+'<span style="font-size:19px;font-weight:800;margin-left:3px">'+s[1]+'</span></div>'
+    + '<div style="font-size:14px;font-weight:700;color:#1b2942;margin-top:9px">'+s[2]+'</div></div>'; }).join('');
+  var missionBand = '<div style="background:linear-gradient(120deg,#eaf1ff 0%,#f4f8ff 55%,#fdf3ee 100%);margin-top:84px">'
+    + '<section class="rs-post rs-pad reveal" style="max-width:1180px;margin:0 auto;padding:60px 28px;display:grid;grid-template-columns:1.15fr 1fr;gap:44px;align-items:center">'
+    + '<div style="background:#fff;border:1px solid #e7edf6;border-radius:28px 80px 28px 28px;padding:42px 46px;box-shadow:0 24px 60px rgba(31,95,208,.10)">'+_msItems+'</div>'
+    + '<div style="padding:6px 4px">'
+    + '<h2 style="margin:0;font-size:24px;font-weight:900;color:#14233f;line-height:1.55">ひとりで抱えこまない<br>場所をつくる。</h2>'
+    + '<p style="margin:18px 0 0;font-size:14px;color:#5a6678;line-height:2">進路や勉強、学校生活の悩みは、身近な人ほど相談しづらいもの。SenpaiNetは、同じ学校を歩いた先輩に匿名で相談できる場所です。ひとりで抱えこまず、少し先を行く先輩の経験を、次の一歩のヒントにしてください。</p>'
+    + '<div data-nav="about" style="margin-top:26px;display:inline-flex;align-items:center;gap:14px;cursor:pointer"><span style="font-size:14px;font-weight:800;color:#14233f">詳しくみる</span><span style="width:38px;height:38px;border-radius:50%;background:#14233f;color:#fff;display:flex;align-items:center;justify-content:center"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>'
+    + '<div style="height:2px;width:280px;max-width:100%;margin-top:14px;background:linear-gradient(90deg,#2f73e8,#0ea5e9)"></div>'
+    + '</div></section></div>';
+
   return '<main>'
     /* hero */
     + '<div style="background:linear-gradient(175deg,#dceaff 0%,#eaf3ff 58%,#f4f8ff 100%);border-bottom:1px solid #e7edf6">'
@@ -802,6 +822,8 @@ function homeHTML(){
     + '<section class="rs-pad reveal" style="max-width:1180px;margin:52px auto 0;padding:0 28px"><div class="rs-stats" style="border:1px solid #e7edf6;border-radius:12px;padding:34px 10px;display:grid;grid-template-columns:repeat(4,1fr);background:#fff;box-shadow:0 8px 24px rgba(20,40,80,.05)">'+statsHTML+'</div></section>'
     /* features */
     + featuresHTML()
+    /* mission / 実績 */
+    + missionBand
     /* popular */
     + '<section class="rs-pad reveal" style="max-width:1180px;margin:84px auto 0;padding:0 28px">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px"><h2 style="margin:0;font-size:20px;font-weight:700;color:#1b2942">人気の相談例</h2><span data-nav="browse" style="font-size:13px;font-weight:700;color:#2f73e8;cursor:pointer">もっと見る ›</span></div>'
