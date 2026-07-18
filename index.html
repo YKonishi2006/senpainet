@@ -836,7 +836,7 @@ function footerHTML(){
     + '<div><div style="display:flex;align-items:center;gap:8px"><svg width="24" height="24" viewBox="0 0 64 64"><polygon points="32,15 57,26 32,37 7,26" fill="#2f73e8"/></svg><span style="font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:800;font-size:18px">SenpaiNet</span></div><p style="font-size:12px;color:#66738c;line-height:1.8;margin:12px 0 0">同じ学校の先輩に、匿名で相談できるサイトです。進路や勉強、学校生活のことを、経験した先輩に聞いてみてください。</p></div>'
     + col('サービス',[['相談を探す','data-nav="browse"'],['相談する','data-nav="post"'],['先輩の方へ','data-nav="alumni"'],['使い方','data-nav="howto"']])
     + col('サポート',[['よくある質問','data-support="faq"'],['お問い合わせ','data-support="contact"'],['サポートセンター','data-support=""'],['利用規約','data-legal="terms"']])
-    + col('その他',[['プライバシーポリシー','data-legal="privacy"'],['運営会社','data-info="company"'],['運営管理（管理者）','data-admin="1"']])
+    + col('その他',[['運営について','data-nav="about"'],['プライバシーポリシー','data-legal="privacy"'],['運営会社','data-info="company"'],['運営管理（管理者）','data-admin="1"']])
     + '<div><div style="font-size:12px;font-weight:700;color:#3a465f;margin-bottom:10px">公式SNS</div><div style="display:flex;gap:8px">'+sns+'</div></div>'
     + '</div><div style="max-width:1180px;margin:24px auto 0;font-size:11px;color:#9aa6ba">© 2024 SenpaiNet. All rights reserved.</div></footer>';
 }
@@ -2864,9 +2864,100 @@ function adminHTML(){
     + topbar + '<div class="admin2-body">' + sidebar + '<main class="admin2-main">' + content + '</main></div></div>';
 }
 
+/* ============ 運営について / 事業紹介（About） ============ */
+function aboutHTML(){
+  var st = computeStats();
+  var avg = st.avgHours>0 ? (st.avgHours<10?Math.round(st.avgHours*10)/10:Math.round(st.avgHours)) : '—';
+  function ic(inner,sz){ return '<svg width="'+(sz||22)+'" height="'+(sz||22)+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+inner+'</svg>'; }
+
+  var heroArt = '<div style="position:relative;width:100%;max-width:500px;margin:0 0 0 auto">'
+    + '<svg viewBox="0 0 460 340" width="100%" style="display:block">'
+    + '<ellipse cx="240" cy="190" rx="205" ry="150" fill="#dbe8ff"/><circle cx="58" cy="238" r="20" fill="#c7dcff"/>'
+    + '<path d="M118 330 v-46 a44 44 0 0 1 88 0 v46 z" fill="#5b8bf5"/><circle cx="162" cy="152" r="34" fill="#f5c6a3"/>'
+    + '<path d="M128 152 a34 34 0 0 1 68 0 q4 -44 -34 -44 q-38 0 -34 44z" fill="#20304e"/>'
+    + '<path d="M256 330 v-42 a42 42 0 0 1 84 0 v42 z" fill="#2f73e8"/><circle cx="298" cy="158" r="32" fill="#f5c6a3"/>'
+    + '<path d="M266 158 a32 32 0 0 1 64 0 q4 -42 -32 -42 q-36 0 -32 42z" fill="#20304e"/>'
+    + '<g><rect x="186" y="84" width="76" height="46" rx="14" fill="#fff" stroke="#cfe0fb" stroke-width="1.5"/><path d="M210 130l-8 12 16-12z" fill="#fff"/><circle cx="208" cy="107" r="3.4" fill="#9bb4d8"/><circle cx="224" cy="107" r="3.4" fill="#9bb4d8"/><circle cx="240" cy="107" r="3.4" fill="#9bb4d8"/></g>'
+    + '</svg>'
+    + '<div style="position:absolute;right:5%;top:12%;width:50px;height:50px;border-radius:50%;background:#fff;box-shadow:0 8px 20px rgba(224,86,138,.18);display:flex;align-items:center;justify-content:center;color:#e0568a">'+heart(24)+'</div>'
+    + '</div>';
+
+  var hero = '<div style="background:linear-gradient(180deg,#e9f1ff 0%,#f4f8ff 100%)">'
+    + '<section class="rs-post rs-pad" style="max-width:1180px;margin:0 auto;padding:48px 28px 40px;display:grid;grid-template-columns:1.05fr .95fr;gap:32px;align-items:center">'
+    + '<div><span style="display:inline-block;font-size:12.5px;font-weight:700;color:#2f73e8;background:#dbe8ff;padding:6px 14px;border-radius:20px">運営について</span>'
+    + '<h1 class="rs-page-h1" style="margin:16px 0 0;font-size:38px;line-height:1.35;font-weight:900;letter-spacing:-.01em;color:#14233f">同じ学校の先輩に、<br>気軽に相談できる場所を。</h1>'
+    + '<p style="margin:18px 0 0;font-size:14.5px;line-height:1.9;color:#5a6678">SenpaiNetは、進路・勉強・学校生活の悩みを、<br>同じ学校を経験した先輩に匿名で相談できるサービスです。</p>'
+    + '<div class="rs-btn-row" style="margin-top:26px;display:flex;gap:14px"><button data-nav="post" style="border:none;cursor:pointer;background:#f5cb4d;color:#3d2f06;border-radius:12px;padding:13px 24px;font-size:14.5px;font-weight:800">相談してみる</button>'
+    + '<button data-nav="alumni" style="cursor:pointer;background:#fff;color:#2f73e8;border:1.5px solid #bcd3f5;border-radius:12px;padding:13px 24px;font-size:14.5px;font-weight:700">先輩の方へ</button></div></div>'
+    + heroArt + '</section></div>';
+
+  // 課題
+  var issues = [
+    ['進路や将来のことを、身近に相談できる相手が少ない'],
+    ['先生や親には、なんとなく聞きにくいことがある'],
+    ['同じ学校を通った先輩の“リアルな経験”が一番参考になる']
+  ].map(function(t){ return '<div style="display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid #e7edf6;border-radius:14px;padding:18px 20px"><span style="display:flex;color:#2f73e8;flex-shrink:0;margin-top:1px">'+ic('<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>',20)+'</span><p style="margin:0;font-size:13.5px;color:#3a465f;line-height:1.8">'+t[0]+'</p></div>'; }).join('');
+  var issueSection = '<section class="rs-pad" style="max-width:1180px;margin:52px auto 0;padding:0 28px">'
+    + '<h2 style="margin:0 0 8px;font-size:22px;font-weight:900;color:#14233f">私たちが解決したい課題</h2>'
+    + '<p style="margin:0 0 22px;font-size:13.5px;color:#66738c">こんな“相談しづらさ”を、先輩の力でほどきたいと考えています。</p>'
+    + '<div class="rs-pop" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">'+issues+'</div></section>';
+
+  // 事業内容
+  var biz = [
+    [ic('<path d="M21 11.5a8.4 8.4 0 0 1-11.7 7.7L3 21l1.9-6.1A8.4 8.4 0 1 1 21 11.5z"/>'),'匿名で相談','進路・勉強・学校生活の悩みを、名前を出さずに投稿できます。個人情報は公開されません。'],
+    [ic('<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>'),'先輩が回答','同じ学校の在校生上級生・卒業生が、自分の経験をもとにアドバイスします。'],
+    [ic('<path d="M2 8l10-4 10 4-10 4z"/><path d="M6 10v5c0 1.6 3 3 6 3s6-1.4 6-3v-5"/>'),'コミュニティ','卒業生同士・テーマ別につながり、大学生活や就活の情報も交換できます。'],
+    [ic('<path d="M3 11l14-6v14L3 13z"/><path d="M17 8a3 3 0 0 1 0 6"/>'),'先輩からのお知らせ','先輩によるイベント・募集・お役立ち情報も届きます。']
+  ].map(function(b){ return '<div style="background:#fff;border:1px solid #e7edf6;border-radius:16px;padding:24px 22px"><div style="width:48px;height:48px;border-radius:14px;background:#e8f1fe;color:#2f73e8;display:flex;align-items:center;justify-content:center">'+b[0]+'</div><div style="font-size:16px;font-weight:800;color:#14233f;margin:15px 0 8px">'+b[1]+'</div><p style="font-size:13px;color:#66738c;line-height:1.85;margin:0">'+b[2]+'</p></div>'; }).join('');
+  var bizSection = '<section class="rs-pad" style="max-width:1180px;margin:52px auto 0;padding:0 28px">'
+    + '<h2 style="margin:0 0 22px;font-size:22px;font-weight:900;color:#14233f">事業内容</h2>'
+    + '<div class="rs-pop" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">'+biz+'</div></section>';
+
+  // 実績
+  var stats = [
+    [st.total.toLocaleString(),'件','相談件数'],[String(st.rate),'%','回答率'],
+    [String(avg),'時間','平均返信時間'],[st.senpai.toLocaleString(),'人','回答した先輩']
+  ].map(function(s,i){ return '<div class="rs-stat" style="text-align:center;'+(i<3?'border-right:1px solid #edf1f8':'')+'"><div><span class="num" style="font-size:30px;color:#14233f">'+s[0]+'</span><span style="font-size:13px;color:#66738c;margin-left:2px">'+s[1]+'</span></div><div style="font-size:12px;color:#94a1b5;margin-top:2px">'+s[2]+'</div></div>'; }).join('');
+  var statSection = '<section class="rs-pad" style="max-width:1180px;margin:52px auto 0;padding:0 28px"><div class="rs-stats" style="background:#fff;border:1px solid #e7edf6;border-radius:16px;padding:30px 10px;display:grid;grid-template-columns:repeat(4,1fr);box-shadow:0 8px 24px rgba(20,40,80,.05)">'+stats+'</div><div style="text-align:center;font-size:11.5px;color:#94a1b5;margin-top:10px">※ 実績はサービス内のデータから自動集計しています。</div></section>';
+
+  // 安心・安全
+  var safety = [
+    ['匿名で利用できる','投稿・回答はすべて匿名です。個人情報は公開されません。'],
+    ['適切な投稿をチェック','不適切な投稿は運営がチェック・削除します。'],
+    ['困ったときは通報できる','迷惑行為や不適切な内容はいつでも通報できます。'],
+    ['安心して相談できる環境','みんなが気持ちよく利用できるコミュニティを目指しています。']
+  ].map(function(t){ return '<div style="display:flex;gap:10px;align-items:flex-start"><span style="display:flex;color:#1e9e63;flex-shrink:0;margin-top:1px">'+ic('<circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/>',18)+'</span><div><div style="font-size:13px;font-weight:800;color:#1b2942">'+t[0]+'</div><p style="font-size:11.5px;color:#5a6678;line-height:1.7;margin:4px 0 0">'+t[1]+'</p></div></div>'; }).join('');
+  var safetySection = '<section class="rs-pad" style="max-width:1180px;margin:52px auto 0;padding:0 28px"><div style="background:#eef4ff;border:1px solid #cfe0fb;border-radius:18px;padding:24px 30px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:18px"><span style="display:flex;color:#2f73e8">'+ic('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',20)+'</span><h2 style="margin:0;font-size:16px;font-weight:800;color:#1f5fd0">安心・安全への取り組み</h2></div><div class="howto-safety">'+safety+'</div></div></section>';
+
+  // 運営メッセージ
+  var message = '<section class="rs-pad" style="max-width:1180px;margin:52px auto 0;padding:0 28px"><div style="background:#fff;border:1px solid #e7edf6;border-radius:18px;padding:30px 32px">'
+    + '<div style="font-size:34px;color:#2f73e8;font-weight:900;line-height:.5;height:18px;font-family:Georgia,serif">&ldquo;</div>'
+    + '<p style="font-size:15px;color:#3a465f;line-height:2;margin:12px 0 18px;max-width:760px">かつて自分が悩んだことを、いまの後輩がまさに悩んでいます。少し先を歩いた先輩のひとことが、進路や毎日の不安をやわらげ、次の一歩を押してくれる——そんな場所をつくりたくて、SenpaiNetを始めました。匿名だからこそ、素直に相談できる。同じ学校だからこそ、話が通じる。その良さを大切に運営していきます。</p>'
+    + '<div style="display:flex;align-items:center;gap:12px">'+avatar(40,'#e6effe','#2f73e8')+'<div><div style="font-size:13.5px;font-weight:800;color:#1b2942">SenpaiNet 運営事務局</div><div style="font-size:12px;color:#94a1b5">（運営者情報はあとから編集できます）</div></div></div></div></section>';
+
+  // 運営概要
+  function ov(k,v){ return '<div style="display:flex;gap:16px;padding:14px 4px;border-bottom:1px solid #eef1f7"><div style="width:120px;flex-shrink:0;font-size:13px;font-weight:700;color:#3a465f">'+k+'</div><div style="flex:1;font-size:13.5px;color:#3a465f">'+v+'</div></div>'; }
+  var overview = '<section class="rs-pad" style="max-width:1180px;margin:52px auto 0;padding:0 28px"><h2 style="margin:0 0 16px;font-size:22px;font-weight:900;color:#14233f">運営概要</h2><div style="background:#fff;border:1px solid #e7edf6;border-radius:16px;padding:8px 24px 16px">'
+    + ov('サービス名','SenpaiNet（センパイネット）')
+    + ov('提供内容','同じ学校の先輩に匿名で相談できるプラットフォーム（相談・回答・コミュニティ）')
+    + ov('対象','中高一貫校の在校生と卒業生（先輩）')
+    + ov('運営','SenpaiNet 運営事務局')
+    + ov('お問い合わせ','<span data-support="contact" style="color:#2f73e8;font-weight:700;cursor:pointer">お問い合わせフォーム</span>')
+    + '</div></section>';
+
+  // CTA
+  var cta = '<section class="rs-pad" style="max-width:1180px;margin:56px auto 0;padding:0 28px 20px"><div class="rs-stack-sm" style="background:linear-gradient(120deg,#2f73e8,#2560d0);border-radius:20px;padding:38px 40px;display:flex;align-items:center;justify-content:space-between;gap:24px">'
+    + '<div><div style="font-size:22px;font-weight:900;color:#fff;line-height:1.5">その悩み、先輩に<br>相談してみませんか？</div><p style="font-size:13px;color:#dbe7ff;margin:12px 0 0">匿名・無料。30秒で投稿できます。</p></div>'
+    + '<div style="display:flex;gap:12px;flex-shrink:0;flex-wrap:wrap"><button data-nav="post" style="cursor:pointer;border:none;background:#f5cb4d;color:#3d2f06;font-weight:800;font-size:14px;padding:14px 26px;border-radius:12px">相談してみる</button><button data-nav="browse" style="cursor:pointer;border:1.5px solid rgba(255,255,255,.5);background:transparent;color:#fff;font-weight:700;font-size:14px;padding:14px 26px;border-radius:12px">相談を探す</button></div></div></section>';
+
+  return '<main>' + hero + issueSection + bizSection + statSection + safetySection + message + overview + cta
+    + '<div style="height:70px"></div>' + footerHTML() + '</main>';
+}
+
 function screenHTML(){
   switch(state.screen){
     case 'home': return homeHTML();
+    case 'about': return aboutHTML();
     case 'news': return newsHTML();
     case 'community': return communityHTML();
     case 'outreach': return outreachHTML();
@@ -2886,7 +2977,7 @@ function screenHTML(){
 
 // 相談する FAB — 閲覧系の画面で表示（ホーム・投稿・詳細は除く）
 function fabHTML(){
-  var show = ['browse','mypage','alumni','howto','support','terms','privacy'].indexOf(state.screen) !== -1;
+  var show = ['browse','mypage','alumni','howto','support','terms','privacy','about'].indexOf(state.screen) !== -1;
   if(!show) return '';
   return '<button data-nav="post" class="fab" style="position:fixed;right:26px;bottom:26px;z-index:60;border:none;cursor:pointer;background:#2f73e8;color:#fff;border-radius:30px;padding:15px 26px;font-size:15px;font-weight:700;box-shadow:0 12px 28px rgba(47,115,232,.45);display:flex;align-items:center;gap:9px">'
     + '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M12 5v14M5 12h14"/></svg>相談する</button>';
@@ -3098,7 +3189,7 @@ function postValid(){ return !!(state.pcat && state.ptitle.trim() && state.pbody
 
 /* ============ BOOT ============ */
 // 既知の画面へは #hash で直接アクセスできる（例: #admin で運営コンソール）
-var KNOWN_SCREENS = { home:1, news:1, community:1, outreach:1, browse:1, post:1, alumni:1, howto:1, mypage:1, support:1, terms:1, privacy:1, admin:1 };
+var KNOWN_SCREENS = { home:1, news:1, community:1, outreach:1, browse:1, post:1, alumni:1, howto:1, mypage:1, support:1, terms:1, privacy:1, about:1, admin:1 };
 function applyHash(){ var h=(location.hash||'').replace(/^#/,''); if(KNOWN_SCREENS[h]){ state.screen=h; if(h==='admin') state.adminTab='dashboard'; } }
 applyHash();
 window.addEventListener('hashchange', function(){ applyHash(); render(); toTop(); });
