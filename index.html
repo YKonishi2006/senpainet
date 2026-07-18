@@ -113,6 +113,10 @@
   .senpai-card{transition:box-shadow .15s,transform .15s,border-color .15s}
   .senpai-card:hover{box-shadow:0 8px 20px rgba(47,115,232,.12);transform:translateY(-1px);border-color:#c3daf7}
   @media (max-width:520px){ .senpai-row{flex-wrap:wrap} .senpai-row>button{width:100%;margin-top:4px} }
+  /* ホームのセクション見出し内リンク */
+  .sec-link{transition:background .15s,border-color .15s,box-shadow .15s}
+  .sec-link:hover{background:#e8f1fe;border-color:#bcd3f5;box-shadow:0 4px 12px rgba(47,115,232,.12)}
+
   /* 使い方（howto） */
   .howto-role{display:flex;gap:26px;align-items:center;flex-wrap:wrap}
   .howto-label{flex:0 0 186px}
@@ -716,6 +720,23 @@ function headerHTML(){
     + '</header>';
 }
 
+/* ============ ホーム共通のセクション見出し ============ */
+function secIcon(p){ return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg>'; }
+// アイコン＋英字ラベル＋見出し＋補足＋（任意の）ピル型リンク
+function sectionHead(icon, eyebrow, title, sub, linkLabel, linkAttr){
+  var link = linkLabel
+    ? '<span '+linkAttr+' class="sec-link" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:#2f73e8;background:#fff;border:1px solid #dbe2ec;border-radius:999px;padding:9px 17px;white-space:nowrap">'+linkLabel
+      + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>'
+    : '';
+  return '<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:24px;flex-wrap:wrap">'
+    + '<div style="display:flex;align-items:center;gap:14px">'
+    + '<span style="width:44px;height:44px;border-radius:14px;background:#e8f1fe;color:#2f73e8;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+icon+'</span>'
+    + '<div><div style="font-size:11px;font-weight:800;color:#2f73e8;letter-spacing:.14em">'+eyebrow+'</div>'
+    + '<h2 style="margin:3px 0 0;font-size:22px;font-weight:900;color:#14233f;letter-spacing:-.01em">'+title+'</h2>'
+    + (sub ? '<div style="font-size:12.5px;color:#66738c;margin-top:5px">'+sub+'</div>' : '')
+    + '</div></div>' + link + '</div>';
+}
+
 /* ============ HOME: 3つの特徴 ============ */
 function featuresHTML(){
   var feats = [
@@ -734,7 +755,8 @@ function featuresHTML(){
       + '<p style="font-size:13px;color:#5a6678;line-height:1.85;margin:14px 0 0">'+f[2]+'</p></div>';
   }).join('');
   return '<section class="rs-pad reveal" style="max-width:1180px;margin:84px auto 0;padding:0 28px">'
-    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px"><h2 style="margin:0;font-size:20px;font-weight:700;color:#1b2942">SenpaiNetの特徴</h2></div>'
+    + sectionHead(secIcon('<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>'),
+        'FEATURES','SenpaiNetの特徴','匿名で相談できる、3つの理由','','')
     + '<div class="rs-pop" style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px">'+cards+'</div></section>';
 }
 
@@ -826,17 +848,20 @@ function homeHTML(){
     + missionBand
     /* popular */
     + '<section class="rs-pad reveal" style="max-width:1180px;margin:84px auto 0;padding:0 28px">'
-    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px"><h2 style="margin:0;font-size:20px;font-weight:700;color:#1b2942">人気の相談例</h2><span data-nav="browse" style="font-size:13px;font-weight:700;color:#2f73e8;cursor:pointer">もっと見る ›</span></div>'
+    + sectionHead(secIcon('<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>'),
+        'POPULAR','人気の相談例','先輩の回答がついた相談をのぞいてみよう','もっと見る','data-nav="browse"')
     + '<div class="rs-pop" style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px">'+popular+'</div></section>'
     // 卒業生からのお知らせ（抜粋）
     + '<section class="rs-pad reveal" style="max-width:1180px;margin:84px auto 0;padding:0 28px">'
-    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px"><h2 style="margin:0;font-size:20px;font-weight:700;color:#1b2942">先輩からの募集・お誘い</h2><span data-nav="outreach" style="font-size:13px;font-weight:700;color:#2f73e8;cursor:pointer">すべて見る ›</span></div>'
+    + sectionHead(secIcon('<path d="M3 11l14-6v14L3 13z"/><path d="M17 8a3 3 0 0 1 0 6"/><path d="M6 13v4a2 2 0 0 0 2 2h1"/>'),
+        'FROM SENPAI','先輩からの募集・お誘い','イベント・調査協力などのお知らせ','すべて見る','data-nav="outreach"')
     + '<div class="rs-post" style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px">'
     + state.outreachPosts.slice(0,2).map(function(p){ var k=outreachKinds[p.kind]||outreachKinds.other; return '<div data-nav="outreach" style="background:#fff;border:1px solid #e7edf6;border-radius:14px;padding:18px 20px;cursor:pointer" class="card-hover"><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-size:11px;font-weight:700;color:'+k.color+';background:'+k.bg+';padding:3px 10px;border-radius:8px">'+k.label+'</span>'+(p.deadline?'<span style="font-size:11px;font-weight:700;color:#e0568a;background:#fde8f0;padding:3px 10px;border-radius:8px">締切 '+esc(p.deadline)+'</span>':'')+'</div><div style="font-size:15.5px;font-weight:800;color:#1b2942;margin:10px 0 6px">'+esc(p.title)+'</div><div style="font-size:12.5px;color:#66738c;line-height:1.7;max-height:44px;overflow:hidden">'+esc(p.body)+'</div><div style="font-size:11.5px;color:#94a1b5;margin-top:10px">'+p.kaisei+'回生'+(p.univ?'・'+esc(p.univ):'')+' ・ 反応 '+p.responses+'件</div></div>'; }).join('')
     + '</div></section>'
     // FAQ preview (抜粋) — full list is on the サポート page
     + '<section class="rs-pad reveal" style="max-width:1180px;margin:84px auto 100px;padding:0 28px">'
-    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px"><h2 style="margin:0;font-size:20px;font-weight:700;color:#1b2942">よくある質問</h2><span data-support="faq" style="font-size:13px;font-weight:700;color:#2f73e8;cursor:pointer">すべて見る ›</span></div>'
+    + sectionHead(secIcon('<circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.5 2.5 0 1 1 3.6 2.4c-.8.4-1.1 1-1.1 1.9"/><path d="M12 17h.01"/>'),
+        'FAQ','よくある質問','はじめての方からよくいただく質問','すべて見る','data-support="faq"')
     + faqList.slice(0,4).map(function(f){ return '<details class="faq"><summary>Q. '+esc(f[0])+'<span class="chev">'+svg.chevDown+'</span></summary><div class="ans">'+esc(f[1])+'</div></details>'; }).join('')
     + '<div class="rs-stack-sm" style="display:flex;align-items:center;justify-content:space-between;gap:20px;background:#eef4ff;border:1px solid #cfe0fb;border-radius:16px;padding:22px 28px;margin-top:22px">'
     + '<div style="display:flex;align-items:center;gap:18px">'
