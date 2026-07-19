@@ -881,15 +881,15 @@ function homeHTML(){
   }).join('');
   // ミッション/実績セクション（大きな角丸カード＋特大数値＋右にメッセージ）
   var _ms = [
-    [st.total.toLocaleString(),'件','これまでに寄せられた相談'],
-    [st.senpai.toLocaleString(),'人','相談に答えた先輩'],
-    [String(st.rate),'%','先輩が答えた割合'],
-    [String(avgLabel),'時間','最初の回答までの平均']
+    [st.total.toLocaleString(),'件','これまでに投稿された相談数'],
+    [st.senpai.toLocaleString(),'人','登録している先輩'],
+    [String(st.rate),'%','相談の回答率'],
+    [String(avgLabel),'時間','相談の回答が届く平均時間']
   ];
   var _msItems = _ms.map(function(s,i){ return '<div style="margin:0 0 '+(i<3?'26px':'0')+'">'
     + '<div style="font-size:44px;font-weight:900;color:#2f73e8;line-height:1;letter-spacing:-.02em"><span style="color:#bcd3f5">#</span>'+s[0]+'<span style="font-size:19px;font-weight:800;margin-left:3px">'+s[1]+'</span></div>'
     + '<div style="font-size:14px;font-weight:700;color:#1b2942;margin-top:9px">'+s[2]+'</div></div>'; }).join('');
-  var missionBand = splitFeature({ rows:_msItems, eyebrow:'OUR MISSION', title:'ひとりで抱えこまない<br>場所をつくる。', desc:'進路や勉強、学校生活の悩みは、身近な人ほど相談しづらいもの。SenpaiNetは、同じ学校を歩いた先輩に匿名で相談できる場所です。', link:{label:'詳しくみる', attr:'data-nav="about"'}, flip:false });
+  var missionBand = splitFeature({ rows:_msItems, eyebrow:'OUR MISSION', title:'ひとりで抱えこまない<br>場所をつくる。', desc:'進路や勉強、学校生活の悩みは、身近な人ほど相談しづらいもの。SenpaiNetは、同じ学校を歩いた先輩に匿名で相談できる場所です。', link:{label:'詳しくみる', attr:'data-nav="about"'}, flip:false, photo:'assets/photos/window.png' });
 
   return '<main>'
     /* hero */
