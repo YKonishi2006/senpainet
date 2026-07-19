@@ -713,6 +713,67 @@ function findOutreach(id){ for(var i=0;i<state.outreachPosts.length;i++){ if(sta
 function findById(arr, id){ for(var i=0;i<arr.length;i++){ if(arr[i].id===id) return arr[i]; } return null; }
 // 通報の投稿者アカウント
 function reportAuthor(r){ return (r && r.authorId) ? findById(state.adminUsers, r.authorId) : null; }
+// ===== 運営メンバーの招待メール（Blazeプラン不要） =====
+// 送信手段は2通り。無料でどちらも使える。
+//  A) INVITE_ENDPOINT に Google Apps Script のウェブアプリURLを設定 → 自動送信
+//     （設定方法は tools/invite-mailer.gs を参照。Googleアカウントの無料枠で1日100通まで）
+//  B) 未設定なら、招待文を表示するダイアログを開き、メールソフトで送るかコピーして送る
+var INVITE_ENDPOINT = ''; // 例: 'https://script.google.com/macros/s/AKfy.../exec'
+var INVITE_SECRET = '';   // Apps Script 側の SHARED_SECRET と同じ値
+var INVITE_URL = 'https://ykonishi2006.github.io/senpainet/#admin';
+
+function inviteMail(email, by){
+  return {
+    to: email,
+    subject: '【SenpaiNet】運営メンバーに招待されました',
+    body: 'SenpaiNet の運営メンバーに追加されました。\n\n'
+      + 'このメールアドレス（' + email + '）のGoogleアカウントで、管理コンソールにログインできます。\n\n'
+      + '▼ 管理コンソール\n' + INVITE_URL + '\n\n'
+      + 'ログイン方法：上記を開き「Googleでログイン」を選択してください。\n'
+      + (by ? '招待者：' + by + '\n' : '')
+      + '\n心当たりがない場合は、このメールは破棄してください。\nSenpaiNet 運営事務局'
+  };
+}
+// A) Apps Script のウェブアプリに投げて自動送信する。
+//    text/plain で送ることで CORS のプリフライトを避けている。
+function sendInviteViaEndpoint(email, by){
+  if(!INVITE_ENDPOINT) return null;
+  var m = inviteMail(email, by);
+  return fetch(INVITE_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ to: m.to, subject: m.subject, body: m.body, secret: INVITE_SECRET })
+  }).then(function(r){ return r.ok; }).catch(function(){ return false; });
+}
+// B) 招待文を表示して、メールソフトで送る／コピーするダイアログ
+function inviteMailModal(email, by){
+  var m = inviteMail(email, by);
+  var mailto = 'mailto:' + encodeURIComponent(m.to)
+    + '?subject=' + encodeURIComponent(m.subject)
+    + '&body=' + encodeURIComponent(m.body);
+  return '<div style="padding:30px 28px 26px">'
+    + '<h2 style="font-size:18px;font-weight:900;color:#14233f;margin:0 0 8px">招待メールを送る</h2>'
+    + '<p style="font-size:13px;color:#5a6678;line-height:1.9;margin:0 0 16px"><strong>'+esc(email)+'</strong> を運営メンバーに追加しました。下の内容で招待メールを送ってください。</p>'
+    + '<div style="background:#f7f9fc;border:1px solid #e7edf6;border-radius:11px;padding:13px 15px;margin-bottom:12px">'
+    + '<div style="font-size:11px;font-weight:700;color:#8a97ac;margin-bottom:5px">件名</div>'
+    + '<div style="font-size:13px;font-weight:700;color:#1b2942">'+esc(m.subject)+'</div></div>'
+    + '<textarea id="invite-body" readonly style="width:100%;height:170px;box-sizing:border-box;border:1.5px solid #dde4f1;border-radius:11px;padding:12px 14px;font-size:12.5px;line-height:1.85;color:#3a465f;resize:vertical;font-family:inherit">'+esc(m.body)+'</textarea>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-top:18px">'
+    + '<button data-invite-copy="1" style="cursor:pointer;background:#fff;border:1.5px solid #d4dde9;color:#3a465f;font-weight:700;font-size:13.5px;padding:11px 20px;border-radius:10px">本文をコピー</button>'
+    + '<a href="'+esc(mailto)+'" data-modal-close-btn style="text-decoration:none;background:#2f73e8;border:none;color:#fff;font-weight:700;font-size:13.5px;padding:11px 22px;border-radius:10px">メールソフトで開く</a>'
+    + '</div></div>';
+}
+// 招待を送る（自動送信できればそれ、無理ならダイアログ）
+function sendInvite(email, by, silentToast){
+  var p = sendInviteViaEndpoint(email, by);
+  if(p){
+    toast('招待メールを送信中…');
+    p.then(function(ok){ toast(ok ? email+' に招待メールを送信しました' : '自動送信に失敗しました。手動で送ってください'); if(!ok) openModal(inviteMailModal(email, by), 560); });
+    return;
+  }
+  openModal(inviteMailModal(email, by), 560);
+}
+
 // 運営メンバー解除の確認ダイアログ
 function adminRemoveMemberModal(email){
   return '<div style="padding:30px 28px 26px">'
@@ -2843,9 +2904,14 @@ function adminMembersPage(){
   }
   var listCard = admCard('運営メンバー（'+(state.adminMembersLoaded?state.adminMembers.length:'…')+'人）','', body);
 
-  var mailNote = '<div style="background:#fdf0dc;border:1px solid #f2dcb4;border-radius:14px;padding:16px 18px;margin-top:18px">'
-    + '<div style="font-size:12.5px;font-weight:800;color:#a4700f;margin-bottom:6px">招待メールについて</div>'
-    + '<p style="font-size:12px;color:#7a5a15;line-height:1.9;margin:0">メンバーを追加すると招待メールが送信キューに登録されます。実際に配信するには、Firebaseを<strong>Blazeプラン</strong>にして拡張機能「<strong>Trigger Email from Firestore</strong>」（監視コレクション：<code>mail</code>）を有効にしてください。未設定の間、招待メールは届きません（メンバー追加自体はすぐ有効です）。</p></div>';
+  var auto = !!INVITE_ENDPOINT;
+  var mailNote = auto
+    ? '<div style="background:#e7f5ee;border:1px solid #c6e6d6;border-radius:14px;padding:16px 18px;margin-top:18px">'
+      + '<div style="font-size:12.5px;font-weight:800;color:#157a4a;margin-bottom:6px">招待メールは自動送信されます</div>'
+      + '<p style="font-size:12px;color:#2f6b4e;line-height:1.9;margin:0">メンバーを追加すると、Google Apps Script 経由で招待メールが自動送信されます（無料枠：1日100通まで）。送信に失敗した場合は、手動で送るための画面が開きます。</p></div>'
+    : '<div style="background:#eef4ff;border:1px solid #cfe0fb;border-radius:14px;padding:16px 18px;margin-top:18px">'
+      + '<div style="font-size:12.5px;font-weight:800;color:#1f5fd0;margin-bottom:6px">招待メールの送り方</div>'
+      + '<p style="font-size:12px;color:#51627e;line-height:1.9;margin:0">メンバーを追加すると招待文の画面が開きます。「メールソフトで開く」を押すか、本文をコピーして送ってください。<br>自動送信にしたい場合は <code>tools/invite-mailer.gs</code> の手順で Google Apps Script を設定し、<code>INVITE_ENDPOINT</code> にURLを入れてください（無料）。</p></div>';
 
   var note = '<div style="background:#eef4ff;border:1px solid #cfe0fb;border-radius:14px;padding:16px 18px;margin-top:18px">'
     + '<div style="font-size:12.5px;font-weight:800;color:#1f5fd0;margin-bottom:6px">アクセスの仕組み</div>'
@@ -3570,7 +3636,7 @@ function on(sel,evt,fn){ var n=document.getElementById(sel); if(n) n.addEventLis
 // handlers across re-renders, which would fire toggles multiple times.
 function setupDelegation(){
   document.body.addEventListener('click', function(e){
-    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-open-cons],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-admin-add-member],[data-admin-remove-member],[data-admin-resend-invite],[data-admin-remove-confirm],[data-report-confirm],[data-report-warn],[data-report-suspend],[data-report-delete],[data-report-dismiss],[data-menu]');
+    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-open-cons],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-admin-add-member],[data-admin-remove-member],[data-admin-resend-invite],[data-invite-copy],[data-admin-remove-confirm],[data-report-confirm],[data-report-warn],[data-report-suspend],[data-report-delete],[data-report-dismiss],[data-menu]');
     if(!t) return;
     if(t.hasAttribute('data-like') || t.hasAttribute('data-bookmark') || t.hasAttribute('data-helpful')) e.stopPropagation();
 
@@ -3679,20 +3745,27 @@ function setupDelegation(){
       if(!(window.snDb && window.snDb.addAdmin)){ toast('Firebaseが未設定です'); return; }
       var by = (state.authUser && state.authUser.email) || '';
       window.snDb.addAdmin(em, by);
-      // 招待メールを送信キューに登録
+      // 招待の記録を残す（Firestore。将来 Trigger Email 拡張を入れればここから送信される）
       if(window.snDb.sendAdminInvite) window.snDb.sendAdminInvite(em, by);
       state.adminMembers = state.adminMembers.concat([{ email:em, allowed:true, addedAt:Date.now(), addedBy:by, invited:true }]);
       state.adminNewEmail = '';
-      render(); toast(em+' を追加し、招待メールを送信しました');
+      render();
+      sendInvite(em, by); // 自動送信 or 招待文ダイアログ
       return;
     }
     if(t.hasAttribute('data-admin-resend-invite')){
       var rem2 = t.getAttribute('data-admin-resend-invite');
-      if(!(window.snDb && window.snDb.sendAdminInvite)){ toast('Firebaseが未設定です'); return; }
-      window.snDb.sendAdminInvite(rem2, (state.authUser && state.authUser.email) || '');
+      var by2 = (state.authUser && state.authUser.email) || '';
+      if(window.snDb && window.snDb.sendAdminInvite) window.snDb.sendAdminInvite(rem2, by2);
       var mm = state.adminMembers.filter(function(m){ return (m.email||'').toLowerCase()===rem2.toLowerCase(); })[0];
       if(mm) mm.invited = true;
-      render(); toast('招待メールを再送しました');
+      sendInvite(rem2, by2);
+      return;
+    }
+    if(t.hasAttribute('data-invite-copy')){
+      var ta = document.getElementById('invite-body');
+      if(ta && navigator.clipboard) navigator.clipboard.writeText(ta.value).then(function(){ toast('本文をコピーしました'); });
+      else if(ta){ ta.select(); document.execCommand('copy'); toast('本文をコピーしました'); }
       return;
     }
     if(t.hasAttribute('data-admin-remove-member')){
