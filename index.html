@@ -716,10 +716,13 @@ function reportAuthor(r){ return (r && r.authorId) ? findById(state.adminUsers, 
 // ===== 運営メンバーの招待メール（Blazeプラン不要） =====
 // 送信手段は2通り。無料でどちらも使える。
 //  A) INVITE_ENDPOINT に Google Apps Script のウェブアプリURLを設定 → 自動送信
-//     （設定方法は tools/invite-mailer.gs を参照。Googleアカウントの無料枠で1日100通まで）
+//     （設定方法は tools/invite-mailer.gs を参照。Googleアカウントの無料枠で送信）
 //  B) 未設定なら、招待文を表示するダイアログを開き、メールソフトで送るかコピーして送る
-var INVITE_ENDPOINT = ''; // 例: 'https://script.google.com/macros/s/AKfy.../exec'
-var INVITE_SECRET = '';   // Apps Script 側の SHARED_SECRET と同じ値
+//
+// このURLは公開リポジトリに載るため「秘密にすることで守る」設計にはしていない。
+// 件名・本文は Apps Script 側で固定してあり、ここから渡せるのは宛先と招待者名だけ。
+// そのためURLを知られても、送れるのは SenpaiNet の招待文に限られる（+1日の送信上限あり）。
+var INVITE_ENDPOINT = 'https://script.google.com/macros/s/AKfycbw-hD9VH3O-tGSa-IOnPbrWgIHgxvzbSw9iBN520DNm3x_5Zrs1imiN70lTZZs6AthxWg/exec';
 var INVITE_URL = 'https://ykonishi2006.github.io/senpainet/#admin';
 
 function inviteMail(email, by){
@@ -738,12 +741,13 @@ function inviteMail(email, by){
 //    text/plain で送ることで CORS のプリフライトを避けている。
 function sendInviteViaEndpoint(email, by){
   if(!INVITE_ENDPOINT) return null;
-  var m = inviteMail(email, by);
   return fetch(INVITE_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ to: m.to, subject: m.subject, body: m.body, secret: INVITE_SECRET })
-  }).then(function(r){ return r.ok; }).catch(function(){ return false; });
+    body: JSON.stringify({ to: email, by: by || '' })
+  }).then(function(r){ return r.json(); })
+    .then(function(j){ return { ok: !!(j && j.ok), error: j && j.error }; })
+    .catch(function(){ return { ok:false, error:'network' }; });
 }
 // B) 招待文を表示して、メールソフトで送る／コピーするダイアログ
 function inviteMailModal(email, by){
@@ -768,7 +772,14 @@ function sendInvite(email, by, silentToast){
   var p = sendInviteViaEndpoint(email, by);
   if(p){
     toast('招待メールを送信中…');
-    p.then(function(ok){ toast(ok ? email+' に招待メールを送信しました' : '自動送信に失敗しました。手動で送ってください'); if(!ok) openModal(inviteMailModal(email, by), 560); });
+    p.then(function(res){
+      if(res.ok){ toast(email+' に招待メールを送信しました'); return; }
+      var msg = res.error==='daily limit reached' ? '本日の送信上限に達しました。手動で送ってください'
+              : res.error==='invalid recipient'   ? 'メールアドレスの形式が正しくありません'
+              : '自動送信に失敗しました。手動で送ってください';
+      toast(msg);
+      if(res.error!=='invalid recipient') openModal(inviteMailModal(email, by), 560);
+    });
     return;
   }
   openModal(inviteMailModal(email, by), 560);
@@ -2908,7 +2919,7 @@ function adminMembersPage(){
   var mailNote = auto
     ? '<div style="background:#e7f5ee;border:1px solid #c6e6d6;border-radius:14px;padding:16px 18px;margin-top:18px">'
       + '<div style="font-size:12.5px;font-weight:800;color:#157a4a;margin-bottom:6px">招待メールは自動送信されます</div>'
-      + '<p style="font-size:12px;color:#2f6b4e;line-height:1.9;margin:0">メンバーを追加すると、Google Apps Script 経由で招待メールが自動送信されます（無料枠：1日100通まで）。送信に失敗した場合は、手動で送るための画面が開きます。</p></div>'
+      + '<p style="font-size:12px;color:#2f6b4e;line-height:1.9;margin:0">メンバーを追加すると、Google Apps Script 経由で招待メールが自動送信されます（1日20通まで）。件名と本文はサーバー側で固定されているため、この仕組みが悪用されて別の内容のメールが送られる心配はありません。送信に失敗した場合は、手動で送るための画面が開きます。</p></div>'
     : '<div style="background:#eef4ff;border:1px solid #cfe0fb;border-radius:14px;padding:16px 18px;margin-top:18px">'
       + '<div style="font-size:12.5px;font-weight:800;color:#1f5fd0;margin-bottom:6px">招待メールの送り方</div>'
       + '<p style="font-size:12px;color:#51627e;line-height:1.9;margin:0">メンバーを追加すると招待文の画面が開きます。「メールソフトで開く」を押すか、本文をコピーして送ってください。<br>自動送信にしたい場合は <code>tools/invite-mailer.gs</code> の手順で Google Apps Script を設定し、<code>INVITE_ENDPOINT</code> にURLを入れてください（無料）。</p></div>';
