@@ -3459,34 +3459,50 @@ render();
       // ---- Firestore データ層（相談 consultations）----
       // 公開サイトは Firestore から相談を読み込み、投稿は書き込み、
       // 運営の非表示/削除は Firestore に反映（＝全員に反映される本物の管理）。
+      // ユーザーがこのセッションで投稿したら true。読み込みで上書きして消さないためのガード。
+      let localDirty = false;
       window.snDb = {
         addConsultation: async (o) => {
+          localDirty = true;
           try { const d = Object.assign({}, o); delete d.liked; delete d.bookmarked; delete d.answers; await setDoc(doc(db, "consultations", o.id), d); } catch (e) {}
         },
         updateConsultation: async (id, patch) => { try { await updateDoc(doc(db, "consultations", id), patch); } catch (e) {} },
         deleteConsultation: async (id) => { try { await deleteDoc(doc(db, "consultations", id)); } catch (e) {} },
         // 回答はサブコレクション consultations/{cid}/answers に保存（全員に共有）
-        addAnswer: async (cid, a) => { try { await addDoc(collection(db, "consultations", cid, "answers"), a); } catch (e) {} }
+        addAnswer: async (cid, a) => { localDirty = true; try { await addDoc(collection(db, "consultations", cid, "answers"), a); } catch (e) {} }
       };
       async function loadConsultations() {
         try {
           const snap = await getDocs(collection(db, "consultations"));
           const map = {}, list = [];
           snap.forEach((ds) => { const o = ds.data() || {}; o.id = ds.id; o.liked = false; o.bookmarked = false; if (!Array.isArray(o.answers)) o.answers = []; map[ds.id] = o; list.push(o); });
-          // 回答をまとめて取得して各相談にひも付け（サブコレクションが正）
+          // 回答を取得して各相談にひも付け（サブコレクションが正）
+          let byC = null;
           try {
+            // 1) まとめて取得（コレクショングループ）
             const asnap = await getDocs(collectionGroup(db, "answers"));
-            const byC = {};
+            byC = {};
             asnap.forEach((ad) => { const cid = ad.ref.parent.parent.id; (byC[cid] = byC[cid] || []).push(Object.assign({}, ad.data())); });
-            Object.keys(byC).forEach((cid) => {
-              if (!map[cid]) return;
-              const arr = byC[cid];
-              arr.sort((x, y) => (y.createdAt || 0) - (x.createdAt || 0));
-              arr.forEach((a) => { a.you = false; a.marked = false; if (a.helpful == null) a.helpful = 0; });
-              map[cid].answers = arr;
-            });
-          } catch (e) { /* 回答取得に失敗してもインラインのシードで表示 */ }
-          if (list.length && window.snOnConsultations) window.snOnConsultations(list);
+          } catch (e) {
+            // 2) 失敗時は相談ごとに個別取得（保険）
+            byC = {};
+            await Promise.all(list.map(async (o) => {
+              try {
+                const s2 = await getDocs(collection(db, "consultations", o.id, "answers"));
+                const arr = []; s2.forEach((ad) => arr.push(Object.assign({}, ad.data())));
+                if (arr.length) byC[o.id] = arr;
+              } catch (e2) {}
+            }));
+          }
+          Object.keys(byC || {}).forEach((cid) => {
+            if (!map[cid]) return;
+            const arr = byC[cid];
+            arr.sort((x, y) => (y.createdAt || 0) - (x.createdAt || 0));
+            arr.forEach((a) => { a.you = false; a.marked = false; if (a.helpful == null) a.helpful = 0; });
+            map[cid].answers = arr;
+          });
+          // 読み込み中にユーザーが投稿していたら上書きしない
+          if (list.length && !localDirty && window.snOnConsultations) window.snOnConsultations(list);
         } catch (e) { /* 取得失敗時は組み込みのシードのまま */ }
       }
       loadConsultations();

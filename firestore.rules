@@ -30,6 +30,12 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // コレクショングループ検索（全相談の回答を一括取得）を許可するために必要。
+    // ※ Firestore ではサブコレクションのルールだけでは collectionGroup クエリは通らない
+    match /{path=**}/answers/{aid} {
+      allow read: if true;
+    }
+
     // 通報：作成は誰でも／閲覧・対応・削除は運営のみ
     match /reports/{id} {
       allow create: if true;
