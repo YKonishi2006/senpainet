@@ -143,6 +143,11 @@
   }
   @media (max-width:640px){ .ab-c4,.ab-c3{grid-template-columns:1fr} }
 
+  /* 写真背景セクション：狭い画面では写真を外して可読性を優先 */
+  @media (max-width:1000px){
+    .split-photo{background-image:none !important;background:linear-gradient(120deg,#eaf1ff 0%,#f4f8ff 55%,#fdf3ee 100%) !important}
+  }
+
   /* ホームのセクション見出し内リンク */
   .sec-link{transition:background .15s,border-color .15s,box-shadow .15s}
   .sec-link:hover{background:#e8f1fe;border-color:#bcd3f5;box-shadow:0 4px 12px rgba(47,115,232,.12)}
@@ -794,7 +799,15 @@ function splitFeature(o){
     + '<p style="margin:18px 0 0;font-size:13.5px;color:#5a6678;line-height:2">'+o.desc+'</p>'
     + '<div '+o.link.attr+' style="margin-top:26px;display:inline-flex;align-items:center;gap:14px;cursor:pointer"><span style="font-size:14px;font-weight:800;color:#14233f">'+o.link.label+'</span><span style="width:40px;height:40px;border-radius:50%;background:#1b3a8f;color:#fff;display:flex;align-items:center;justify-content:center">'+arrow+'</span></div>'
     + '<div style="height:2px;width:300px;max-width:100%;margin-top:16px;background:linear-gradient(90deg,#2f73e8,#8fb8f7)"></div></div>';
-  return '<div style="background:linear-gradient('+(flip?'240deg':'120deg')+',#eaf1ff 0%,#f4f8ff 55%,#fdf3ee 100%);margin-top:84px">'
+  // 写真背景（指定時）：カードのある側は白くフェードさせて可読性を確保
+  var bandCls = 'style="margin-top:84px;', bandOpen;
+  if(o.photo){
+    var dir = flip ? 'to left' : 'to right';
+    bandOpen = '<div class="split-photo" style="margin-top:84px;background-image:linear-gradient('+dir+',#f2f6ff 0%,rgba(242,246,255,.97) 38%,rgba(242,246,255,.86) 54%,rgba(242,246,255,.45) 72%,rgba(242,246,255,.10) 100%),url(\''+o.photo+'\');background-size:cover;background-position:'+(flip?'left center':'right center')+'">';
+  } else {
+    bandOpen = '<div style="margin-top:84px;background:linear-gradient('+(flip?'240deg':'120deg')+',#eaf1ff 0%,#f4f8ff 55%,#fdf3ee 100%)">';
+  }
+  return bandOpen
     + '<section class="rs-post rs-pad reveal" style="max-width:1180px;margin:0 auto;padding:60px 28px;display:grid;grid-template-columns:'+(flip?'1fr 1.15fr':'1.15fr 1fr')+';gap:48px;align-items:center">'
     + (flip ? (text + card) : (card + text)) + '</section></div>';
 }
@@ -915,7 +928,7 @@ function homeHTML(){
     /* 人気の相談例 */
     + splitFeature({ rows:popularRows, eyebrow:'POPULAR', title:'よく読まれている相談を<br>のぞいてみよう。', desc:'同じ学校の後輩がどんなことで悩み、先輩がどう答えているのか。読むだけでも進路や勉強のヒントが見つかります。', link:{label:'すべて見る', attr:'data-nav="browse"'}, cardLink:{label:'もっと見る', attr:'data-nav="browse"'}, flip:true })
     /* 先輩からの募集・お誘い */
-    + splitFeature({ rows:outreachRows, eyebrow:'FROM SENPAI', title:'先輩から届く、<br>誘いと募集。', desc:'在校生・卒業生からのイベントやアンケート、経験談などの募集情報をチェックできます。', link:{label:'すべて見る', attr:'data-nav="outreach"'}, cardLink:{label:'もっと見る', attr:'data-nav="outreach"'}, flip:false })
+    + splitFeature({ rows:outreachRows, eyebrow:'FROM SENPAI', title:'先輩から届く、<br>誘いと募集。', desc:'在校生・卒業生からのイベントやアンケート、経験談などの募集情報をチェックできます。', link:{label:'すべて見る', attr:'data-nav="outreach"'}, cardLink:{label:'もっと見る', attr:'data-nav="outreach"'}, flip:false, photo:'assets/photos/students.png' })
     // FAQ preview (抜粋) — full list is on the サポート page
     + '<section class="rs-pad reveal" style="max-width:1180px;margin:84px auto 100px;padding:0 28px">'
     + sectionHead(secIcon('<circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.5 2.5 0 1 1 3.6 2.4c-.8.4-1.1 1-1.1 1.9"/><path d="M12 17h.01"/>'),
