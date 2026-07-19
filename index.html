@@ -881,7 +881,7 @@ function homeHTML(){
   }).join('');
   // ミッション/実績セクション（大きな角丸カード＋特大数値＋右にメッセージ）
   var _ms = [
-    [st.total.toLocaleString(),'件','これまでに投稿された相談数'],
+    [st.total.toLocaleString(),'件','これまでに投稿された相談'],
     [st.senpai.toLocaleString(),'人','登録している先輩'],
     [String(st.rate),'%','相談の回答率'],
     [String(avgLabel),'時間','相談の回答が届く平均時間']
@@ -941,7 +941,6 @@ function homeHTML(){
     + '<button data-support="contact" style="flex-shrink:0;cursor:pointer;border:none;background:#2f73e8;color:#fff;font-weight:700;font-size:14px;padding:13px 26px;border-radius:11px;white-space:nowrap">お問い合わせはこちら</button>'
     + '</div>'
     + '</section>'
-    + footerHTML()
     + '</main>';
 }
 
@@ -3135,7 +3134,7 @@ function aboutHTML(){
     + '<button data-nav="alumni" style="cursor:pointer;background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.6);font-weight:700;font-size:14px;padding:14px 30px;border-radius:999px;display:inline-flex;align-items:center;gap:8px">先輩として参加する'+I('<path d="M5 12h14M13 6l6 6-6 6"/>',15,2.4)+'</button>'
     + '</div></div></section></div>';
 
-  return '<main>' + hero + need + hard + howto + feats + chatSec + statBand + topicSec + voiceSec + safetySec + cta + footerHTML() + '</main>';
+  return '<main>' + hero + need + hard + howto + feats + chatSec + statBand + topicSec + voiceSec + safetySec + cta + '</main>';
 }
 
 function screenHTML(){
@@ -3183,7 +3182,8 @@ function render(){
   if(state.screen==='admin'){
     app.innerHTML = '<div style="min-height:100vh;background:#eef2f8">' + adminGateHTML() + '</div>';
   } else {
-    app.innerHTML = '<div style="min-height:100vh;background:#f4f8ff">' + headerHTML() + screenHTML() + '</div>' + fabHTML();
+    // フッターは全画面共通で表示（管理コンソールは専用シェルのため除く）
+    app.innerHTML = '<div style="min-height:100vh;display:flex;flex-direction:column;background:#f4f8ff">' + headerHTML() + '<div style="flex:1">' + screenHTML() + '</div>' + footerHTML() + '</div>' + fabHTML();
   }
   wire();
   observeReveals();
