@@ -343,6 +343,7 @@ var state = {
   ],
   // ---- 運営（管理者）コンソール ----
   adminTab: 'dashboard', adminSelectedId: null, adminReportId: null,
+  reportTarget: null, reportReason: '', reportNote: '', adminReportsLoaded: false,
   adminMembers: [], adminMembersLoaded: false, adminMembersLoading: false, adminMembersError: false, adminNewEmail: '', adminNewName: '',
   // Firebase 認証（Googleログイン＋招待制の許可リスト）
   authReady: false, authConfigured: false, authUser: null, adminAuthorized: false,
@@ -799,6 +800,87 @@ function adminRemoveMemberModal(email){
     + '<button data-admin-remove-confirm="'+esc(email)+'" style="cursor:pointer;border:none;background:#c0392b;color:#fff;font-weight:700;font-size:13.5px;padding:11px 24px;border-radius:10px">解除する</button>'
     + '</div></div>';
 }
+// ===== 利用者からの通報 =====
+var REPORT_REASONS = [
+  ['誹謗中傷・攻撃的な内容', '特定の人を傷つける言葉が含まれています'],
+  ['個人情報が含まれている', '実名・学校名・連絡先などが書かれています'],
+  ['スパム・宣伝目的', '営利目的の勧誘や無関係な宣伝です'],
+  ['性的・暴力的な内容', '不快・有害な表現が含まれています'],
+  ['事実と異なる情報', '誤った情報で誤解を招くおそれがあります'],
+  ['その他', '上記に当てはまらない問題があります']
+];
+// 通報対象を { kind, id, idx } から解決し、種別名と本文の抜粋を返す
+function reportSubject(tg){
+  if(!tg) return null;
+  if(tg.kind==='consultation'){
+    var c = find(tg.id); if(!c) return null;
+    return { type:'相談', text:c.title, targetType:'consultation', targetId:c.id };
+  }
+  if(tg.kind==='answer'){
+    var pc = find(tg.id); var a = pc && pc.answers ? pc.answers[tg.idx] : null; if(!a) return null;
+    return { type:'回答', text:(a.body||'').slice(0,60), targetType:'answer', targetId:pc.id, answerIndex:tg.idx };
+  }
+  if(tg.kind==='community'){
+    var cp = findCommunityPost(tg.id); if(!cp) return null;
+    return { type:'コミュニティ投稿', text:cp.title, targetType:'community', targetId:cp.id };
+  }
+  return null;
+}
+// 通報フォーム（理由を選んで送信）
+function reportModal(){
+  var s = reportSubject(state.reportTarget);
+  if(!s) return '<div style="padding:30px 28px">この投稿は見つかりませんでした。</div>';
+  var reasons = REPORT_REASONS.map(function(r){
+    var on = state.reportReason === r[0];
+    return '<div data-report-reason="'+esc(r[0])+'" style="cursor:pointer;display:flex;gap:11px;align-items:flex-start;border:1.5px solid '+(on?'#2f73e8':'#e7edf6')+';background:'+(on?'#f2f7fd':'#fff')+';border-radius:11px;padding:12px 14px">'
+      + '<span style="flex-shrink:0;width:17px;height:17px;margin-top:1px;border-radius:50%;border:2px solid '+(on?'#2f73e8':'#cdd8e6')+';display:flex;align-items:center;justify-content:center">'
+      + (on?'<span style="width:8px;height:8px;border-radius:50%;background:#2f73e8"></span>':'') + '</span>'
+      + '<span><span style="display:block;font-size:13.5px;font-weight:700;color:#1b2942">'+esc(r[0])+'</span>'
+      + '<span style="display:block;font-size:11.5px;color:#8a97ac;margin-top:2px">'+esc(r[1])+'</span></span></div>';
+  }).join('');
+
+  return '<div style="padding:30px 28px 26px">'
+    + '<h2 style="font-size:18px;font-weight:900;color:#14233f;margin:0 0 8px">この投稿を通報する</h2>'
+    + '<p style="font-size:12.5px;color:#66738c;line-height:1.9;margin:0 0 16px">運営が内容を確認します。通報したことが相手に伝わることはありません。</p>'
+    + '<div style="background:#f7f9fc;border:1px solid #e7edf6;border-radius:11px;padding:12px 14px;margin-bottom:18px">'
+    + '<div style="font-size:11px;font-weight:700;color:#8a97ac;margin-bottom:5px">通報する'+esc(s.type)+'</div>'
+    + '<div style="font-size:13px;color:#1b2942;line-height:1.6">'+esc(s.text)+(s.text.length>=60?'…':'')+'</div></div>'
+    + '<div style="font-size:12px;font-weight:700;color:#8a97ac;margin-bottom:9px">理由を選んでください</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px">'+reasons+'</div>'
+    + '<div style="font-size:12px;font-weight:700;color:#8a97ac;margin:18px 0 8px">補足（任意）</div>'
+    + '<textarea id="report-note" placeholder="気になった点があれば書いてください" style="width:100%;box-sizing:border-box;height:74px;border:1.5px solid #dde4f1;border-radius:11px;padding:11px 13px;font-size:13px;line-height:1.8;color:#1b2942;outline:none;resize:vertical;font-family:inherit">'+esc(state.reportNote||'')+'</textarea>'
+    + '<div style="display:flex;gap:11px;justify-content:flex-end;margin-top:20px">'
+    + '<button data-modal-close-btn style="cursor:pointer;background:#fff;border:1.5px solid #d4dde9;color:#3a465f;font-weight:700;font-size:13.5px;padding:11px 20px;border-radius:10px">キャンセル</button>'
+    + '<button data-report-submit="1" style="cursor:pointer;border:none;background:'+(state.reportReason?'#c0392b':'#d9c3c0')+';color:#fff;font-weight:700;font-size:13.5px;padding:11px 24px;border-radius:10px">通報する</button>'
+    + '</div></div>';
+}
+// 通報を送信する（運営の通報管理に届く）
+function submitReport(){
+  var s = reportSubject(state.reportTarget);
+  if(!s){ toast('この投稿は見つかりませんでした'); return; }
+  if(!state.reportReason){ toast('理由を選んでください'); return; }
+  var note = (document.getElementById('report-note') || {}).value || state.reportNote || '';
+  var rep = {
+    id: 'rp_' + Date.now(),
+    type: s.type,
+    targetType: s.targetType,
+    targetId: s.targetId,
+    target: s.text,
+    reason: state.reportReason,
+    note: note.trim().slice(0, 500),
+    reporter: state.setupStatus==='grad' ? '卒業生' : (state.setupStatus==='current' ? '在校生' : '匿名の利用者'),
+    time: 'たった今',
+    createdAt: Date.now(),
+    status: 'pending'
+  };
+  if(s.answerIndex != null) rep.answerIndex = s.answerIndex;
+  state.adminReports = [rep].concat(state.adminReports);
+  if(window.snDb && window.snDb.addReport) window.snDb.addReport(rep);
+  state.reportTarget = null; state.reportReason = ''; state.reportNote = '';
+  closeModal(); render();
+  toast('通報を受け付けました。運営が確認します');
+}
+
 // 通報対応の実行前に出す確認ダイアログ
 function reportConfirmModal(action, id){
   var r = findById(state.adminReports, id); if(!r) return '';
@@ -1474,7 +1556,7 @@ function detailHTML(){
   var post = '<div style="background:#fff;border:1px solid #e7edf6;border-radius:16px;padding:24px 28px">'
     + '<div style="display:flex;align-items:center;justify-content:space-between">'
     + '<span style="font-size:12px;font-weight:700;color:'+m.color+';background:'+m.bg+';padding:4px 12px;border-radius:8px">'+m.label+'</span>'
-    + '<span data-toast="メニューは準備中です" style="cursor:pointer;color:#bcc6d6;font-weight:900;font-size:20px;line-height:1">⋮</span></div>'
+    + '<span data-report-open="consultation:'+c.id+'" title="この相談を通報する" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#b0bccd"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15V4h13l-1.5 3.5L17 11H4"/><path d="M4 21v-6"/></svg>通報</span></div>'
     + '<h1 style="font-size:23px;font-weight:900;color:#14233f;margin:14px 0 16px;line-height:1.4">'+esc(c.title)+'</h1>'
     + '<div class="rs-stack-sm" style="display:flex;align-items:center;justify-content:space-between;gap:12px">'
     + '<div style="display:flex;align-items:center;gap:12px">'+avatar(44,'#e6effe','#2f73e8')
@@ -1541,7 +1623,8 @@ function detailHTML(){
       + '<p style="font-size:13.5px;color:#3a465f;line-height:1.9;margin:14px 0 0;white-space:pre-wrap">'+esc(a.body)+'</p>'
       + '<div style="display:flex;align-items:center;gap:22px;margin-top:14px">'
       + '<button data-helpful="'+idx+'" style="border:none;background:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:6px;color:'+heartColor+';font-size:13px;font-weight:700">'+heart(16)+a.helpful+'</button>'
-      + '<span data-reply-open="'+idx+'" style="cursor:pointer;font-size:13px;font-weight:700;color:'+(state.replyTo===idx?'#2f73e8':'#94a1b5')+'">返信する'+(replyCount?'（'+replyCount+'）':'')+'</span></div>'
+      + '<span data-reply-open="'+idx+'" style="cursor:pointer;font-size:13px;font-weight:700;color:'+(state.replyTo===idx?'#2f73e8':'#94a1b5')+'">返信する'+(replyCount?'（'+replyCount+'）':'')+'</span>'
+      + '<span data-report-open="answer:'+c.id+':'+idx+'" title="この回答を通報する" style="margin-left:auto;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:#b8c3d1"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15V4h13l-1.5 3.5L17 11H4"/><path d="M4 21v-6"/></svg>通報</span></div>'
       + repliesHTML + replyBox
       + '</div>';
   }).join('');
@@ -2291,7 +2374,7 @@ function cmFeedPostHTML(p){
     + '<button data-community-like="'+p.id+'" style="border:none;background:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:6px;color:'+likeColor+';font-size:12.5px;font-weight:700">'+heart(15)+p.likes+'</button>'
     + '<span style="display:inline-flex;align-items:center;gap:6px">'+chat(15)+p.replies+'</span>'
     + '<button data-cm-bookmark="'+p.id+'" style="border:none;background:none;cursor:pointer;padding:0;display:inline-flex;align-items:center">'+bookmark(14,17,bmFill,bmColor)+'</button>'
-    + '<span data-more-toast="1" style="margin-left:auto;cursor:pointer;color:#bcc6d6;font-weight:900;letter-spacing:1px">···</span></div></div>';
+    + '<span data-report-open="community:'+p.id+'" title="この投稿を通報する" style="margin-left:auto;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:#bcc6d6"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15V4h13l-1.5 3.5L17 11H4"/><path d="M4 21v-6"/></svg>通報</span></div></div>';
 }
 
 function cmCenterHTML(isGrad){
@@ -3173,6 +3256,10 @@ function adminNews(){
 }
 
 function adminReports(){
+  // 運営が通報管理を開いたら、Firestore から実際の通報を読み込む（初回のみ）
+  if(!state.adminReportsLoaded && window.snDb && window.snDb.loadReports){
+    state.adminReportsLoaded = true; window.snDb.loadReports();
+  }
   var list = state.adminReports;
   // 選択中の通報（未選択なら未対応の先頭、無ければ先頭）
   var sel = null;
@@ -3295,6 +3382,7 @@ function adminReports(){
       + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+admBadge(sel.type,'#5a6675','#eef1f7')+admStatusBadge(sel.status)+'</div>'
       + '<div style="margin-top:14px">'
       + row('通報理由','<span style="font-weight:700;color:#c0392b">'+esc(sel.reason)+'</span>')
+      + (sel.note ? row('補足','<span style="white-space:pre-wrap">'+esc(sel.note)+'</span>') : '')
       + row('通報者', esc(sel.reporter))
       + row('日時', esc(sel.time||''))
       + '</div>'
@@ -3670,7 +3758,7 @@ function on(sel,evt,fn){ var n=document.getElementById(sel); if(n) n.addEventLis
 // handlers across re-renders, which would fire toggles multiple times.
 function setupDelegation(){
   document.body.addEventListener('click', function(e){
-    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-open-cons],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-admin-add-member],[data-admin-remove-member],[data-admin-resend-invite],[data-invite-copy],[data-admin-remove-confirm],[data-report-confirm],[data-report-warn],[data-report-suspend],[data-report-delete],[data-report-dismiss],[data-menu]');
+    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-open-cons],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-admin-add-member],[data-admin-remove-member],[data-admin-resend-invite],[data-invite-copy],[data-report-open],[data-report-reason],[data-report-submit],[data-admin-remove-confirm],[data-report-confirm],[data-report-warn],[data-report-suspend],[data-report-delete],[data-report-dismiss],[data-menu]');
     if(!t) return;
     if(t.hasAttribute('data-like') || t.hasAttribute('data-bookmark') || t.hasAttribute('data-helpful')) e.stopPropagation();
 
@@ -3798,6 +3886,21 @@ function setupDelegation(){
       sendInvite(rem2, by2, mm && mm.name);
       return;
     }
+    // ---- 利用者からの通報 ----
+    if(t.hasAttribute('data-report-open')){
+      e.stopPropagation();
+      var rt = t.getAttribute('data-report-open').split(':'); // 例 "answer:oc_test:0"
+      state.reportTarget = { kind:rt[0], id:rt[1], idx: rt[2]!=null ? parseInt(rt[2],10) : null };
+      state.reportReason = ''; state.reportNote = '';
+      return openModal(reportModal(), 500);
+    }
+    if(t.hasAttribute('data-report-reason')){
+      var note0 = document.getElementById('report-note');
+      if(note0) state.reportNote = note0.value; // 再描画で消えないよう保持
+      state.reportReason = t.getAttribute('data-report-reason');
+      return openModal(reportModal(), 500);
+    }
+    if(t.hasAttribute('data-report-submit')){ submitReport(); return; }
     if(t.hasAttribute('data-invite-copy')){
       var ta = document.getElementById('invite-body');
       if(ta && navigator.clipboard) navigator.clipboard.writeText(ta.value).then(function(){ toast('本文をコピーしました'); });
@@ -3848,8 +3951,8 @@ function setupDelegation(){
       if(rn){ rn.status='resolved'; rn.action='対応不要'; rn.actionAt='たった今'; state.adminReportId=rn.id; render(); toast('対応不要として処理しました'); }
       return;
     }
-    if(t.hasAttribute('data-admin-report-resolve')){ var rr=findById(state.adminReports, t.getAttribute('data-admin-report-resolve')); if(rr){ rr.status='resolved'; render(); toast('対応済みにしました'); } return; }
-    if(t.hasAttribute('data-admin-report-del')){ var rid=t.getAttribute('data-admin-report-del'); state.adminReports=state.adminReports.filter(function(r){ return r.id!==rid; }); if(state.adminReportId===rid) state.adminReportId=null; render(); toast('通報を削除しました'); return; }
+    if(t.hasAttribute('data-admin-report-resolve')){ var rr=findById(state.adminReports, t.getAttribute('data-admin-report-resolve')); if(rr){ rr.status='resolved'; if(window.snDb && window.snDb.updateReport) window.snDb.updateReport(rr.id, {status:'resolved'}); render(); toast('対応済みにしました'); } return; }
+    if(t.hasAttribute('data-admin-report-del')){ var rid=t.getAttribute('data-admin-report-del'); if(window.snDb && window.snDb.deleteReport) window.snDb.deleteReport(rid); state.adminReports=state.adminReports.filter(function(r){ return r.id!==rid; }); if(state.adminReportId===rid) state.adminReportId=null; render(); toast('通報を削除しました'); return; }
   });
 }
 
@@ -3978,6 +4081,15 @@ window.snOnAdmins = function(list){
   state.adminMembers = Array.isArray(list) ? list : [];
   state.adminMembersLoaded = true; state.adminMembersLoading = false;
   if(!Array.isArray(list)) state.adminMembersError = true;
+  render();
+};
+// Firestore から通報一覧を受け取る。ローカルにしかない分（送信直後・サンプル）は残す。
+window.snOnReports = function(list){
+  state.adminReportsLoaded = true;
+  if(!Array.isArray(list)) return;
+  var ids = {}; list.forEach(function(r){ ids[r.id] = true; });
+  var keep = state.adminReports.filter(function(r){ return !ids[r.id]; });
+  state.adminReports = list.concat(keep);
   render();
 };
 window.snAuthError = function(msg){ toast('ログインに失敗しました'); };
@@ -4127,6 +4239,19 @@ render();
         saveSenpaiProfile: async (p) => { try { await addDoc(collection(db, "senpaiProfiles"), p); } catch (e) {} },
         // ログインユーザーのプロフィール（本人のみ読み書き可）
         saveUserProfile: async (uid, p) => { try { await setDoc(doc(db, "users", uid), p, { merge: true }); } catch (e) {} },
+        // 利用者からの通報を保存する（作成は誰でも可／閲覧は運営のみ＝ルールで保護）
+        addReport: async (r) => { try { await setDoc(doc(db, "reports", r.id), r); } catch (e) {} },
+        // 運営が通報一覧を読み込む
+        loadReports: async () => {
+          try {
+            const snap = await getDocs(collection(db, "reports"));
+            const arr = []; snap.forEach((ds) => { const o = ds.data() || {}; o.id = ds.id; arr.push(o); });
+            arr.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            if (window.snOnReports) window.snOnReports(arr);
+          } catch (e) {}
+        },
+        updateReport: async (id, patch) => { try { await setDoc(doc(db, "reports", id), patch, { merge: true }); } catch (e) {} },
+        deleteReport: async (id) => { try { await deleteDoc(doc(db, "reports", id)); } catch (e) {} },
         // マイページ用の投稿履歴（相談本体は匿名のまま、本人の配下にだけ記録）
         addMyPost: async (uid, cid, p) => { try { await setDoc(doc(db, "users", uid, "myPosts", cid), p); } catch (e) {} },
         // タグ付き相談の通知キュー。マッチングとメール送信はサーバー側で行う。
