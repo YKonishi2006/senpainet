@@ -343,6 +343,7 @@ var state = {
   ],
   // ---- 運営（管理者）コンソール ----
   adminTab: 'dashboard', adminSelectedId: null, adminReportId: null,
+  adminMembers: [], adminMembersLoaded: false, adminMembersLoading: false, adminMembersError: false, adminNewEmail: '',
   // Firebase 認証（Googleログイン＋招待制の許可リスト）
   authReady: false, authConfigured: false, authUser: null, adminAuthorized: false,
   adminUsers: [
@@ -712,6 +713,19 @@ function findOutreach(id){ for(var i=0;i<state.outreachPosts.length;i++){ if(sta
 function findById(arr, id){ for(var i=0;i<arr.length;i++){ if(arr[i].id===id) return arr[i]; } return null; }
 // 通報の投稿者アカウント
 function reportAuthor(r){ return (r && r.authorId) ? findById(state.adminUsers, r.authorId) : null; }
+// 運営メンバー解除の確認ダイアログ
+function adminRemoveMemberModal(email){
+  return '<div style="padding:30px 28px 26px">'
+    + '<h2 style="font-size:18px;font-weight:900;color:#14233f;margin:0 0 10px">このメンバーの権限を解除しますか？</h2>'
+    + '<p style="font-size:13px;color:#5a6678;line-height:1.9;margin:0 0 16px">解除すると、このアカウントは管理コンソールを開けなくなります。あとから再度追加できます。</p>'
+    + '<div style="background:#f7f9fc;border:1px solid #e7edf6;border-radius:11px;padding:13px 15px">'
+    + '<div style="font-size:11px;font-weight:700;color:#8a97ac;margin-bottom:5px">対象</div>'
+    + '<div style="font-size:13px;font-weight:700;color:#1b2942">'+esc(email)+'</div></div>'
+    + '<div style="display:flex;gap:12px;justify-content:flex-end;margin-top:22px">'
+    + '<button data-modal-close-btn style="cursor:pointer;background:#fff;border:1.5px solid #d4dde9;color:#3a465f;font-weight:700;font-size:13.5px;padding:11px 22px;border-radius:10px">キャンセル</button>'
+    + '<button data-admin-remove-confirm="'+esc(email)+'" style="cursor:pointer;border:none;background:#c0392b;color:#fff;font-weight:700;font-size:13.5px;padding:11px 24px;border-radius:10px">解除する</button>'
+    + '</div></div>';
+}
 // 通報対応の実行前に出す確認ダイアログ
 function reportConfirmModal(action, id){
   var r = findById(state.adminReports, id); if(!r) return '';
@@ -2785,6 +2799,57 @@ function adminActivity(){
     + admCard('最近のアクティビティ','', items);
 }
 
+// 運営メンバー（管理コンソールにログインできるアカウント）の管理
+function ensureAdminsLoaded(){
+  if(state.adminMembersLoaded || state.adminMembersLoading) return;
+  if(window.snDb && window.snDb.loadAdmins){ state.adminMembersLoading = true; window.snDb.loadAdmins(); }
+}
+function adminMembersPage(){
+  ensureAdminsLoaded();
+  var me = (state.authUser && state.authUser.email ? state.authUser.email : '').toLowerCase();
+
+  // 追加フォーム
+  var addCard = admCard('メンバーを追加','',
+    '<div style="padding:18px 20px">'
+    + '<p style="font-size:12.5px;color:#66738c;line-height:1.85;margin:0 0 12px">追加したメールアドレスのGoogleアカウントで、管理コンソールにログインできるようになります。</p>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
+    + '<input id="admin-add-email" value="'+esc(state.adminNewEmail||'')+'" placeholder="例：staff@example.com" style="flex:1;min-width:220px;border:1.5px solid #dde4f1;border-radius:10px;padding:11px 13px;font-size:13.5px;color:#1b2942;outline:none">'
+    + '<button data-admin-add-member="1" style="cursor:pointer;border:none;background:#2f73e8;color:#fff;font-weight:700;font-size:13.5px;padding:11px 22px;border-radius:10px;white-space:nowrap">追加する</button>'
+    + '</div></div>');
+
+  // 一覧
+  var body;
+  if(state.adminMembersError){
+    body = '<div style="padding:26px;text-align:center;color:#94a1b5;font-size:13px">メンバー一覧を取得できませんでした。<br>Firebaseにログインしているかご確認ください。</div>';
+  } else if(!state.adminMembersLoaded){
+    body = '<div style="padding:30px;text-align:center"><div class="sn-spin" style="margin:0 auto 12px"></div><div style="font-size:13px;color:#66738c">読み込み中…</div></div>';
+  } else if(!state.adminMembers.length){
+    body = '<div style="padding:26px;text-align:center;color:#94a1b5;font-size:13px">登録されたメンバーがいません。</div>';
+  } else {
+    var rows = state.adminMembers.map(function(m){
+      var isMe = (m.email||'').toLowerCase() === me;
+      var added = m.addedAt ? new Date(m.addedAt).toLocaleDateString('ja-JP') : '—';
+      return '<tr>'
+        + admTd('<span style="font-weight:700;color:#1b2942">'+esc(m.email)+'</span>'+(isMe?' '+admBadge('自分','#1f5fd0','#e8f1fe'):''))
+        + admTd('<span style="color:#94a1b5">'+esc(added)+'</span>')
+        + admTd('<span style="color:#66738c">'+esc(m.addedBy||'—')+'</span>')
+        + admTd(isMe
+            ? '<span style="font-size:11.5px;color:#c3cbd6">自分は解除できません</span>'
+            : admActionBtn('解除','data-admin-remove-member="'+esc(m.email)+'"','danger'))
+        + '</tr>';
+    }).join('');
+    body = admTable(['メールアドレス','追加日','追加者','操作'], rows);
+  }
+  var listCard = admCard('運営メンバー（'+(state.adminMembersLoaded?state.adminMembers.length:'…')+'人）','', body);
+
+  var note = '<div style="background:#eef4ff;border:1px solid #cfe0fb;border-radius:14px;padding:16px 18px;margin-top:18px">'
+    + '<div style="font-size:12.5px;font-weight:800;color:#1f5fd0;margin-bottom:6px">アクセスの仕組み</div>'
+    + '<p style="font-size:12px;color:#51627e;line-height:1.9;margin:0">ここに登録されたメールアドレス（＋コード内の初期設定）のGoogleアカウントだけが管理コンソールを開けます。解除するとすぐにアクセスできなくなります。誤って全員を解除しないよう、自分自身は解除できません。</p></div>';
+
+  return admPageHead('運営メンバー','管理コンソールにログインできるアカウントを登録・解除できます。')
+    + '<div class="admin-cols">'+listCard+'<div>'+addCard+note+'</div></div>';
+}
+
 function adminPlaceholder(title, desc){
   return admPageHead(title, desc)
     + '<div style="background:#fff;border:1px solid #e5eaf2;border-radius:16px;padding:64px 30px;text-align:center">'
@@ -3208,6 +3273,7 @@ function adminHTML(){
       ['analytics','相談データ分析',admIcons.pie],
       ['activity','アクティビティログ',admIcons.history] ] },
     { label:'システム', items:[
+      ['members','運営メンバー',admIcons.people],
       ['settings','設定',admIcons.gear],
       ['mail','メール送信履歴',admIcons.mail],
       ['backup','バックアップ',admIcons.db] ] }
@@ -3231,6 +3297,7 @@ function adminHTML(){
     case 'reports': content = adminReports(); break;
     case 'news': content = adminNews(); break;
     case 'activity': content = adminActivity(); break;
+    case 'members': content = adminMembersPage(); break;
     case 'posts': content = adminPlaceholder('投稿・コメント管理','コミュニティ投稿やコメントの管理機能を準備中です。'); break;
     case 'events': content = adminPlaceholder('イベント管理','イベントの作成・管理機能を準備中です。'); break;
     case 'report': content = adminPlaceholder('利用状況レポート','利用状況のレポート出力を準備中です。'); break;
@@ -3498,7 +3565,7 @@ function on(sel,evt,fn){ var n=document.getElementById(sel); if(n) n.addEventLis
 // handlers across re-renders, which would fire toggles multiple times.
 function setupDelegation(){
   document.body.addEventListener('click', function(e){
-    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-open-cons],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-report-confirm],[data-report-warn],[data-report-suspend],[data-report-delete],[data-report-dismiss],[data-menu]');
+    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-open-cons],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-admin-add-member],[data-admin-remove-member],[data-admin-remove-confirm],[data-report-confirm],[data-report-warn],[data-report-suspend],[data-report-delete],[data-report-dismiss],[data-menu]');
     if(!t) return;
     if(t.hasAttribute('data-like') || t.hasAttribute('data-bookmark') || t.hasAttribute('data-helpful')) e.stopPropagation();
 
@@ -3598,6 +3665,31 @@ function setupDelegation(){
     if(t.hasAttribute('data-admin-news-del')){ var nid=t.getAttribute('data-admin-news-del'); state.newsItems=state.newsItems.filter(function(n){ return n.id!==nid; }); render(); toast('お知らせを削除しました'); return; }
     if(t.hasAttribute('data-admin-sn-del')){ var sid=t.getAttribute('data-admin-sn-del'); state.senpaiNews=state.senpaiNews.filter(function(n){ return n.id!==sid; }); render(); toast('先輩のお知らせを削除しました'); return; }
     // ---- 通報への対応（警告／アカウント停止／投稿の削除） ----
+    // ---- 運営メンバーの追加・解除 ----
+    if(t.hasAttribute('data-admin-add-member')){
+      var inp = document.getElementById('admin-add-email');
+      var em = ((inp && inp.value) || state.adminNewEmail || '').trim().toLowerCase();
+      if(!em || em.indexOf('@')===-1 || em.indexOf('.')===-1){ toast('メールアドレスを正しく入力してください'); return; }
+      if(state.adminMembers.some(function(m){ return (m.email||'').toLowerCase()===em; })){ toast('すでに登録されています'); return; }
+      if(!(window.snDb && window.snDb.addAdmin)){ toast('Firebaseが未設定です'); return; }
+      var by = (state.authUser && state.authUser.email) || '';
+      window.snDb.addAdmin(em, by);
+      state.adminMembers = state.adminMembers.concat([{ email:em, allowed:true, addedAt:Date.now(), addedBy:by }]);
+      state.adminNewEmail = '';
+      render(); toast(em+' を運営メンバーに追加しました');
+      return;
+    }
+    if(t.hasAttribute('data-admin-remove-member')){
+      return openModal(adminRemoveMemberModal(t.getAttribute('data-admin-remove-member')), 420);
+    }
+    if(t.hasAttribute('data-admin-remove-confirm')){
+      var rem = t.getAttribute('data-admin-remove-confirm');
+      closeModal();
+      if(window.snDb && window.snDb.removeAdmin) window.snDb.removeAdmin(rem);
+      state.adminMembers = state.adminMembers.filter(function(m){ return (m.email||'').toLowerCase()!==rem.toLowerCase(); });
+      render(); toast(rem+' の権限を解除しました');
+      return;
+    }
     if(t.hasAttribute('data-report-confirm')){
       var cf=(t.getAttribute('data-report-confirm')||'').split(':');
       return openModal(reportConfirmModal(cf[0], cf[1]), 420);
@@ -3716,6 +3808,7 @@ function wire(){
   on('answer-text','input', function(e){ state.answerText = e.target.value; });
   on('submit-answer','click', submitAnswer);
   on('reply-text','input', function(e){ state.replyText = e.target.value; });
+  on('admin-add-email','input', function(e){ state.adminNewEmail = e.target.value; });
   on('reply-submit','click', submitReply);
 }
 function postValid(){ return !!(state.pcat && state.ptitle.trim() && state.pbody.trim()); }
@@ -3754,6 +3847,13 @@ window.snOnAuthChange = function(user, authorized, configured, profile){
 };
 // ログインユーザーの投稿履歴（マイページ用）
 window.snOnMyPosts = function(list){ if(!Array.isArray(list)) return; state.myPosts = list; render(); };
+// 運営メンバー一覧（管理コンソール用）
+window.snOnAdmins = function(list){
+  state.adminMembers = Array.isArray(list) ? list : [];
+  state.adminMembersLoaded = true; state.adminMembersLoading = false;
+  if(!Array.isArray(list)) state.adminMembersError = true;
+  render();
+};
 window.snAuthError = function(msg){ toast('ログインに失敗しました'); };
 // Firestore から相談一覧を受け取って差し替え（起動直後に一度）
 window.snOnConsultations = function(list){
@@ -3843,6 +3943,17 @@ render();
         addReply: async (cid, aid, r) => { localDirty = true; try { await addDoc(collection(db, "consultations", cid, "answers", aid, "replies"), r); } catch (e) {} },
         // 不適切な回答の削除（運営のみ／ルールで保護）
         deleteAnswer: async (cid, aid) => { try { await deleteDoc(doc(db, "consultations", cid, "answers", aid)); } catch (e) {} },
+        // 運営メンバー（管理コンソールにログインできるアカウント）の管理
+        loadAdmins: async () => {
+          try {
+            const snap = await getDocs(collection(db, "admins"));
+            const arr = []; snap.forEach((ds) => { const o = ds.data() || {}; o.email = ds.id; arr.push(o); });
+            arr.sort((a, b) => (a.email > b.email ? 1 : -1));
+            if (window.snOnAdmins) window.snOnAdmins(arr);
+          } catch (e) { if (window.snOnAdmins) window.snOnAdmins(null); }
+        },
+        addAdmin: async (email, by) => { try { await setDoc(doc(db, "admins", email), { allowed: true, addedAt: Date.now(), addedBy: by || "" }); return true; } catch (e) { return false; } },
+        removeAdmin: async (email) => { try { await deleteDoc(doc(db, "admins", email)); return true; } catch (e) { return false; } },
         // 先輩プロフィール（得意分野タグ＋通知先メール）。メールは公開読み取り不可。
         saveSenpaiProfile: async (p) => { try { await addDoc(collection(db, "senpaiProfiles"), p); } catch (e) {} },
         // ログインユーザーのプロフィール（本人のみ読み書き可）

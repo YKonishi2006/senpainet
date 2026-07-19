@@ -83,10 +83,12 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
-    // 運営メンバー：自分の許可確認のためだけ読み取り可。書き込みは不可（招待は管理者が別途）
+    // 運営メンバー：自分の許可確認は本人、一覧の閲覧と追加・削除は運営のみ。
+    // （管理コンソールの「運営メンバー」画面から招待・解除できる）
     match /admins/{email} {
-      allow read: if request.auth != null && request.auth.token.email == email;
-      allow write: if false;
+      allow read: if request.auth != null
+                  && (request.auth.token.email == email || isAdmin());
+      allow create, update, delete: if isAdmin();
     }
 
     // それ以外は既定で拒否
