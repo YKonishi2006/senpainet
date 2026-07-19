@@ -2833,21 +2833,26 @@ function adminMembersPage(){
         + admTd('<span style="font-weight:700;color:#1b2942">'+esc(m.email)+'</span>'+(isMe?' '+admBadge('自分','#1f5fd0','#e8f1fe'):''))
         + admTd('<span style="color:#94a1b5">'+esc(added)+'</span>')
         + admTd('<span style="color:#66738c">'+esc(m.addedBy||'—')+'</span>')
-        + admTd(isMe
-            ? '<span style="font-size:11.5px;color:#c3cbd6">自分は解除できません</span>'
-            : admActionBtn('解除','data-admin-remove-member="'+esc(m.email)+'"','danger'))
+        + admTd('<span style="display:inline-flex;gap:7px;flex-wrap:wrap">'
+            + admActionBtn('招待メール再送','data-admin-resend-invite="'+esc(m.email)+'"','')
+            + (isMe ? '' : admActionBtn('解除','data-admin-remove-member="'+esc(m.email)+'"','danger'))
+            + '</span>')
         + '</tr>';
     }).join('');
     body = admTable(['メールアドレス','追加日','追加者','操作'], rows);
   }
   var listCard = admCard('運営メンバー（'+(state.adminMembersLoaded?state.adminMembers.length:'…')+'人）','', body);
 
+  var mailNote = '<div style="background:#fdf0dc;border:1px solid #f2dcb4;border-radius:14px;padding:16px 18px;margin-top:18px">'
+    + '<div style="font-size:12.5px;font-weight:800;color:#a4700f;margin-bottom:6px">招待メールについて</div>'
+    + '<p style="font-size:12px;color:#7a5a15;line-height:1.9;margin:0">メンバーを追加すると招待メールが送信キューに登録されます。実際に配信するには、Firebaseを<strong>Blazeプラン</strong>にして拡張機能「<strong>Trigger Email from Firestore</strong>」（監視コレクション：<code>mail</code>）を有効にしてください。未設定の間、招待メールは届きません（メンバー追加自体はすぐ有効です）。</p></div>';
+
   var note = '<div style="background:#eef4ff;border:1px solid #cfe0fb;border-radius:14px;padding:16px 18px;margin-top:18px">'
     + '<div style="font-size:12.5px;font-weight:800;color:#1f5fd0;margin-bottom:6px">アクセスの仕組み</div>'
     + '<p style="font-size:12px;color:#51627e;line-height:1.9;margin:0">ここに登録されたメールアドレス（＋コード内の初期設定）のGoogleアカウントだけが管理コンソールを開けます。解除するとすぐにアクセスできなくなります。誤って全員を解除しないよう、自分自身は解除できません。</p></div>';
 
   return admPageHead('運営メンバー','管理コンソールにログインできるアカウントを登録・解除できます。')
-    + '<div class="admin-cols">'+listCard+'<div>'+addCard+note+'</div></div>';
+    + '<div class="admin-cols">'+listCard+'<div>'+addCard+mailNote+note+'</div></div>';
 }
 
 function adminPlaceholder(title, desc){
@@ -3565,7 +3570,7 @@ function on(sel,evt,fn){ var n=document.getElementById(sel); if(n) n.addEventLis
 // handlers across re-renders, which would fire toggles multiple times.
 function setupDelegation(){
   document.body.addEventListener('click', function(e){
-    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-open-cons],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-admin-add-member],[data-admin-remove-member],[data-admin-remove-confirm],[data-report-confirm],[data-report-warn],[data-report-suspend],[data-report-delete],[data-report-dismiss],[data-menu]');
+    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-open-cons],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-admin-add-member],[data-admin-remove-member],[data-admin-resend-invite],[data-admin-remove-confirm],[data-report-confirm],[data-report-warn],[data-report-suspend],[data-report-delete],[data-report-dismiss],[data-menu]');
     if(!t) return;
     if(t.hasAttribute('data-like') || t.hasAttribute('data-bookmark') || t.hasAttribute('data-helpful')) e.stopPropagation();
 
@@ -3674,9 +3679,20 @@ function setupDelegation(){
       if(!(window.snDb && window.snDb.addAdmin)){ toast('Firebaseが未設定です'); return; }
       var by = (state.authUser && state.authUser.email) || '';
       window.snDb.addAdmin(em, by);
-      state.adminMembers = state.adminMembers.concat([{ email:em, allowed:true, addedAt:Date.now(), addedBy:by }]);
+      // 招待メールを送信キューに登録
+      if(window.snDb.sendAdminInvite) window.snDb.sendAdminInvite(em, by);
+      state.adminMembers = state.adminMembers.concat([{ email:em, allowed:true, addedAt:Date.now(), addedBy:by, invited:true }]);
       state.adminNewEmail = '';
-      render(); toast(em+' を運営メンバーに追加しました');
+      render(); toast(em+' を追加し、招待メールを送信しました');
+      return;
+    }
+    if(t.hasAttribute('data-admin-resend-invite')){
+      var rem2 = t.getAttribute('data-admin-resend-invite');
+      if(!(window.snDb && window.snDb.sendAdminInvite)){ toast('Firebaseが未設定です'); return; }
+      window.snDb.sendAdminInvite(rem2, (state.authUser && state.authUser.email) || '');
+      var mm = state.adminMembers.filter(function(m){ return (m.email||'').toLowerCase()===rem2.toLowerCase(); })[0];
+      if(mm) mm.invited = true;
+      render(); toast('招待メールを再送しました');
       return;
     }
     if(t.hasAttribute('data-admin-remove-member')){
@@ -3953,6 +3969,34 @@ render();
           } catch (e) { if (window.snOnAdmins) window.snOnAdmins(null); }
         },
         addAdmin: async (email, by) => { try { await setDoc(doc(db, "admins", email), { allowed: true, addedAt: Date.now(), addedBy: by || "" }); return true; } catch (e) { return false; } },
+        // 招待メールを送信キュー（mail コレクション）に積む。
+        // Firebase 拡張「Trigger Email from Firestore」が実際の送信を担当する。
+        sendAdminInvite: async (email, by) => {
+          var url = "https://ykonishi2006.github.io/senpainet/#admin";
+          try {
+            await addDoc(collection(db, "mail"), {
+              to: [email],
+              type: "admin-invite",
+              message: {
+                subject: "【SenpaiNet】運営メンバーに招待されました",
+                text: "SenpaiNet の運営メンバーに追加されました。\n\n"
+                  + "このメールアドレス（" + email + "）のGoogleアカウントで、管理コンソールにログインできます。\n\n"
+                  + "▼ 管理コンソール\n" + url + "\n\n"
+                  + "ログイン方法：上記を開き「Googleでログイン」を選択してください。\n"
+                  + (by ? "招待者：" + by + "\n" : "")
+                  + "\n心当たりがない場合は、このメールは破棄してください。\nSenpaiNet 運営事務局",
+                html: "<p>SenpaiNet の運営メンバーに追加されました。</p>"
+                  + "<p>このメールアドレス（<strong>" + email + "</strong>）のGoogleアカウントで、管理コンソールにログインできます。</p>"
+                  + '<p><a href="' + url + '" style="display:inline-block;background:#2f73e8;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none">管理コンソールを開く</a></p>'
+                  + "<p style=\"font-size:13px;color:#555\">ログイン方法：上記を開き「Googleでログイン」を選択してください。"
+                  + (by ? "<br>招待者：" + by : "") + "</p>"
+                  + '<p style="font-size:12px;color:#888">心当たりがない場合は、このメールは破棄してください。<br>SenpaiNet 運営事務局</p>'
+              },
+              createdAt: Date.now()
+            });
+            return true;
+          } catch (e) { return false; }
+        },
         removeAdmin: async (email) => { try { await deleteDoc(doc(db, "admins", email)); return true; } catch (e) { return false; } },
         // 先輩プロフィール（得意分野タグ＋通知先メール）。メールは公開読み取り不可。
         saveSenpaiProfile: async (p) => { try { await addDoc(collection(db, "senpaiProfiles"), p); } catch (e) {} },
