@@ -303,6 +303,7 @@ var state = {
   screen: 'home', query: '', activeCat: 'all', activeGrade: 'all', selectedId: 'oc_univ',
   pstep: 1, pcat: '', ptitle: '', pbody: '', pMoreOpen: false, pContext: '',
   answering: false, answerText: '', answerAnon: false,
+  replyTo: null, replyText: '',
   browseSort: 'new', browseLimit: 4, answerSort: 'new',
   userName: '在校生ユーザー', userKaisei: 18, userUniv: '', userFaculty: '', menuOpen: false, loggedIn: true, mypageTab: 'overview',
   setupStatus: null, setupGrade: null, setupGradKaisei: null, setupUniv: '', setupFaculty: '', setupNick: '',
@@ -628,10 +629,15 @@ function submitAnswer(){
   var c=selectedC(); var t=state.answerText.trim();
   if(!c||!t) return;
   var wasEmpty = c.answers.length === 0;
-  c.answers.unshift({ kaisei:state.userKaisei, time:'たった今', body:t, helpful:0, marked:false, you:true, anon:!!state.answerAnon });
+  var localAns = { kaisei:state.userKaisei, time:'たった今', body:t, helpful:0, marked:false, you:true, anon:!!state.answerAnon, replies:[] };
+  c.answers.unshift(localAns);
   c.nAnswers += 1;
   // Firestore に保存（全員に共有）。未設定/失敗時はローカルのみ。
-  if(window.snDb && window.snDb.addAnswer) window.snDb.addAnswer(c.id, { kaisei:state.userKaisei, time:'たった今', body:t, helpful:0, anon:!!state.answerAnon, createdAt:Date.now() });
+  // 返信をひも付けられるよう、生成されたIDをローカルの回答にも持たせる。
+  if(window.snDb && window.snDb.addAnswer){
+    var pr = window.snDb.addAnswer(c.id, { kaisei:state.userKaisei, time:'たった今', body:t, helpful:0, anon:!!state.answerAnon, createdAt:Date.now() });
+    if(pr && pr.then) pr.then(function(id){ if(id) localAns.id = id; });
+  }
   // 初回回答なら「返信までの時間」を記録（→ 回答率・平均返信時間に反映）
   if(wasEmpty && c.firstReplyHours == null){
     var hrs = (Date.now() - (c.postedAt || Date.now())) / 3600000;
@@ -639,6 +645,20 @@ function submitAnswer(){
   }
   state.answering=false; state.answerText=''; state.answerAnon=false;
   render(); toast('回答を投稿しました');
+}
+// 回答への返信を投稿（Firestore: consultations/{cid}/answers/{aid}/replies）
+function submitReply(){
+  var c = selectedC(); if(!c) return;
+  var a = c.answers[state.replyTo];
+  var t = (state.replyText||'').trim();
+  if(!a || !t) return;
+  if(!Array.isArray(a.replies)) a.replies = [];
+  a.replies.push({ kaisei:state.userKaisei, time:'たった今', body:t, you:true });
+  if(window.snDb && window.snDb.addReply && a.id){
+    window.snDb.addReply(c.id, a.id, { kaisei:state.userKaisei, time:'たった今', body:t, createdAt:Date.now() });
+  }
+  state.replyTo = null; state.replyText = '';
+  render(); toast('返信しました');
 }
 // 投稿完了時に実際の相談として追加（→ 相談件数・回答率が順次反映）
 function addUserConsultation(){
@@ -1333,6 +1353,26 @@ function detailHTML(){
     var name = a.you ? (a.anon?'匿名の先輩':'あなた') : (a.anon?'匿名の先輩':a.kaisei+'回生');
     var heartColor = a.marked ? '#e0568a' : '#94a1b5';
     var youBg = a.you ? '#f2f7fd' : '#fff';
+    // 返信一覧（回答の下にぶら下げて表示）
+    var reps = Array.isArray(a.replies) ? a.replies : [];
+    var replyCount = reps.length;
+    var repliesHTML = reps.length ? '<div style="margin-top:14px;padding-left:16px;border-left:2px solid #e3ebf7;display:flex;flex-direction:column;gap:12px">'
+      + reps.map(function(r){
+          var rname = r.you ? 'あなた' : (r.kaisei ? r.kaisei+'回生' : '匿名');
+          return '<div style="display:flex;gap:10px;align-items:flex-start">'+avatar(28,'#eef1f8','#94a1b5')
+            + '<div style="min-width:0"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:12.5px;font-weight:700;color:#1b2942">'+esc(rname)+'</span><span style="font-size:11px;color:#94a1b5">'+esc(r.time||'')+'</span></div>'
+            + '<p style="font-size:12.5px;color:#3a465f;line-height:1.85;margin:5px 0 0;white-space:pre-wrap">'+esc(r.body||'')+'</p></div></div>';
+        }).join('')
+      + '</div>' : '';
+    // 返信フォーム（「返信する」を押した回答にだけ表示）
+    var replyBox = state.replyTo===idx
+      ? '<div style="margin-top:14px;padding-left:16px;border-left:2px solid #cfe0fb">'
+        + '<textarea id="reply-text" placeholder="この回答に返信する…" style="width:100%;height:64px;border:1.5px solid #dde4f1;border-radius:10px;padding:10px 12px;font-size:13px;color:#1b2942;line-height:1.7;outline:none;resize:vertical;font-family:inherit">'+esc(state.replyText)+'</textarea>'
+        + '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px">'
+        + '<button data-reply-cancel="1" style="cursor:pointer;background:#fff;border:1.5px solid #d4dde9;color:#3a465f;font-weight:700;font-size:12.5px;padding:8px 16px;border-radius:9px">キャンセル</button>'
+        + '<button id="reply-submit" style="cursor:pointer;border:none;background:#2f73e8;color:#fff;font-weight:700;font-size:12.5px;padding:8px 20px;border-radius:9px">返信する</button>'
+        + '</div></div>'
+      : '';
     return '<div style="background:'+youBg+';border:1px solid #e7edf6;border-radius:16px;padding:20px 22px">'
       + '<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">'+avatar(36,'#eef1f8','#94a1b5')
       + '<span style="font-size:14px;font-weight:700;color:#1b2942">'+esc(name)+'</span>'
@@ -1342,7 +1382,8 @@ function detailHTML(){
       + '<p style="font-size:13.5px;color:#3a465f;line-height:1.9;margin:14px 0 0;white-space:pre-wrap">'+esc(a.body)+'</p>'
       + '<div style="display:flex;align-items:center;gap:22px;margin-top:14px">'
       + '<button data-helpful="'+idx+'" style="border:none;background:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:6px;color:'+heartColor+';font-size:13px;font-weight:700">'+heart(16)+a.helpful+'</button>'
-      + '<span data-toast="返信は準備中です" style="cursor:pointer;font-size:13px;font-weight:700;color:#94a1b5">返信する</span></div>'
+      + '<span data-reply-open="'+idx+'" style="cursor:pointer;font-size:13px;font-weight:700;color:'+(state.replyTo===idx?'#2f73e8':'#94a1b5')+'">返信する'+(replyCount?'（'+replyCount+'）':'')+'</span></div>'
+      + repliesHTML + replyBox
       + '</div>';
   }).join('');
 
@@ -3197,7 +3238,7 @@ function on(sel,evt,fn){ var n=document.getElementById(sel); if(n) n.addEventLis
 // handlers across re-renders, which would fire toggles multiple times.
 function setupDelegation(){
   document.body.addEventListener('click', function(e){
-    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-menu]');
+    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-menu]');
     if(!t) return;
     if(t.hasAttribute('data-like') || t.hasAttribute('data-bookmark') || t.hasAttribute('data-helpful')) e.stopPropagation();
 
@@ -3264,6 +3305,8 @@ function setupDelegation(){
     if(t.hasAttribute('data-browse-sort')){ state.browseSort = state.browseSort==='new'?'popular':'new'; state.browseLimit = 4; render(); return; }
     if(t.hasAttribute('data-browse-more')){ state.browseLimit += 4; render(); return; }
     if(t.hasAttribute('data-answer-sort')){ state.answerSort = state.answerSort==='new'?'helpful':'new'; render(); return; }
+    if(t.hasAttribute('data-reply-open')){ var ri=parseInt(t.getAttribute('data-reply-open'),10); state.replyTo = (state.replyTo===ri ? null : ri); state.replyText=''; render(); return; }
+    if(t.hasAttribute('data-reply-cancel')){ state.replyTo=null; state.replyText=''; render(); return; }
     if(t.hasAttribute('data-ansort')){ state.answerSort = t.getAttribute('data-ansort'); render(); return; }
     if(t.hasAttribute('data-answer-anon')){ state.answerAnon = !state.answerAnon; render(); return; }
     if(t.hasAttribute('data-post-more')){ state.pMoreOpen = !state.pMoreOpen; render(); return; }
@@ -3368,6 +3411,8 @@ function wire(){
   on('cancel-answer','click', function(){ state.answering=false; state.answerText=''; render(); });
   on('answer-text','input', function(e){ state.answerText = e.target.value; });
   on('submit-answer','click', submitAnswer);
+  on('reply-text','input', function(e){ state.replyText = e.target.value; });
+  on('reply-submit','click', submitReply);
 }
 function postValid(){ return !!(state.pcat && state.ptitle.trim() && state.pbody.trim()); }
 
@@ -3469,7 +3514,10 @@ render();
         updateConsultation: async (id, patch) => { try { await updateDoc(doc(db, "consultations", id), patch); } catch (e) {} },
         deleteConsultation: async (id) => { try { await deleteDoc(doc(db, "consultations", id)); } catch (e) {} },
         // 回答はサブコレクション consultations/{cid}/answers に保存（全員に共有）
-        addAnswer: async (cid, a) => { localDirty = true; try { await addDoc(collection(db, "consultations", cid, "answers"), a); } catch (e) {} }
+        // 生成されたドキュメントIDを返す（返信のひも付けに使う）
+        addAnswer: async (cid, a) => { localDirty = true; try { const ref = await addDoc(collection(db, "consultations", cid, "answers"), a); return ref.id; } catch (e) { return null; } },
+        // 返信は回答のサブコレクション consultations/{cid}/answers/{aid}/replies に保存
+        addReply: async (cid, aid, r) => { localDirty = true; try { await addDoc(collection(db, "consultations", cid, "answers", aid, "replies"), r); } catch (e) {} }
       };
       async function loadConsultations() {
         try {
@@ -3482,14 +3530,14 @@ render();
             // 1) まとめて取得（コレクショングループ）
             const asnap = await getDocs(collectionGroup(db, "answers"));
             byC = {};
-            asnap.forEach((ad) => { const cid = ad.ref.parent.parent.id; (byC[cid] = byC[cid] || []).push(Object.assign({}, ad.data())); });
+            asnap.forEach((ad) => { const cid = ad.ref.parent.parent.id; const o = Object.assign({}, ad.data()); o.id = ad.id; (byC[cid] = byC[cid] || []).push(o); });
           } catch (e) {
             // 2) 失敗時は相談ごとに個別取得（保険）
             byC = {};
             await Promise.all(list.map(async (o) => {
               try {
                 const s2 = await getDocs(collection(db, "consultations", o.id, "answers"));
-                const arr = []; s2.forEach((ad) => arr.push(Object.assign({}, ad.data())));
+                const arr = []; s2.forEach((ad) => { const x = Object.assign({}, ad.data()); x.id = ad.id; arr.push(x); });
                 if (arr.length) byC[o.id] = arr;
               } catch (e2) {}
             }));
@@ -3498,9 +3546,18 @@ render();
             if (!map[cid]) return;
             const arr = byC[cid];
             arr.sort((x, y) => (y.createdAt || 0) - (x.createdAt || 0));
-            arr.forEach((a) => { a.you = false; a.marked = false; if (a.helpful == null) a.helpful = 0; });
+            arr.forEach((a) => { a.you = false; a.marked = false; if (a.helpful == null) a.helpful = 0; if (!Array.isArray(a.replies)) a.replies = []; });
             map[cid].answers = arr;
           });
+          // 返信（回答のサブコレクション）をまとめて取得して各回答にひも付け
+          try {
+            const rsnap = await getDocs(collectionGroup(db, "replies"));
+            const byA = {};
+            rsnap.forEach((rd) => { const aid = rd.ref.parent.parent.id; (byA[aid] = byA[aid] || []).push(Object.assign({}, rd.data())); });
+            list.forEach((o) => (o.answers || []).forEach((a) => {
+              if (a.id && byA[a.id]) { const arr = byA[a.id]; arr.sort((x, y) => (x.createdAt || 0) - (y.createdAt || 0)); a.replies = arr; }
+            }));
+          } catch (e) { /* 返信が取れなくても回答は表示する */ }
           // 読み込み中にユーザーが投稿していたら上書きしない
           if (list.length && !localDirty && window.snOnConsultations) window.snOnConsultations(list);
         } catch (e) { /* 取得失敗時は組み込みのシードのまま */ }
