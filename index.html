@@ -342,7 +342,7 @@ var state = {
     { id:'u3', kaisei:13, univ:'早稲田大学', answers:76 }
   ],
   // ---- 運営（管理者）コンソール ----
-  adminTab: 'dashboard', adminSelectedId: null,
+  adminTab: 'dashboard', adminSelectedId: null, adminReportId: null,
   // Firebase 認証（Googleログイン＋招待制の許可リスト）
   authReady: false, authConfigured: false, authUser: null, adminAuthorized: false,
   adminUsers: [
@@ -2949,24 +2949,56 @@ function adminNews(){
 }
 
 function adminReports(){
-  var rows = state.adminReports.map(function(r){
-    var actions = r.status==='pending'
-      ? '<span style="display:inline-flex;gap:7px">'+admActionBtn('対応済みにする','data-admin-report-resolve="'+r.id+'"','primary')+admActionBtn('削除','data-admin-report-del="'+r.id+'"','danger')+'</span>'
-      : admActionBtn('削除','data-admin-report-del="'+r.id+'"','danger');
-    return '<tr>'
-      + admTd(admBadge(r.type,'#5a6675','#eef1f7'))
-      + admTd('<span style="font-weight:700;color:#1b2942">'+esc(r.target.length>28?r.target.slice(0,28)+'…':r.target)+'</span>')
-      + admTd('<span style="color:#3a465f">'+esc(r.reason)+'</span>')
-      + admTd('<span style="color:#66738c">'+esc(r.reporter)+'</span>')
-      + admTd('<span style="color:#94a1b5">'+r.time+'</span>')
-      + admTd(admStatusBadge(r.status))
-      + admTd(actions)
-      + '</tr>';
-  }).join('');
-  var pending = state.adminReports.filter(function(r){ return r.status==='pending'; }).length;
+  var list = state.adminReports;
+  // 選択中の通報（未選択なら未対応の先頭、無ければ先頭）
+  var sel = null;
+  if(state.adminReportId) sel = findById(list, state.adminReportId);
+  if(!sel) sel = list.filter(function(r){ return r.status==='pending'; })[0] || list[0] || null;
+
+  // ---- 左：通報リスト ----
+  var rows = list.map(function(r){
+    var on = sel && r.id === sel.id;
+    return '<div data-admin-report-view="'+r.id+'" class="row-hover" style="cursor:pointer;padding:13px 16px;border-bottom:1px solid #eef1f7;border-left:3px solid '+(on?'#2f73e8':'transparent')+';background:'+(on?'#f2f7fd':'#fff')+'">'
+      + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">'
+      + admBadge(r.type,'#5a6675','#eef1f7') + admStatusBadge(r.status) + '</div>'
+      + '<div style="font-size:13.5px;font-weight:700;color:#1b2942;line-height:1.5'+(r.status==='resolved'?';opacity:.6':'')+'">'+esc(r.target)+'</div>'
+      + '<div style="font-size:11px;color:#94a1b5;margin-top:5px">'+esc(r.reason)+' ・ '+esc(r.time||'')+'</div>'
+      + '</div>';
+  }).join('') || '<div style="padding:24px;text-align:center;color:#94a1b5;font-size:13px">通報はありません。</div>';
+  var pending = list.filter(function(r){ return r.status==='pending'; }).length;
   var extra = '<span style="font-size:12px;color:#66738c">未対応 <span style="font-weight:800;color:#c07a12">'+pending+'</span> 件</span>';
-  return admPageHead('通報対応','ユーザーからの通報を確認し、対応できます。')
-    + admCard('通報一覧', extra, admTable(['対象','内容','理由','通報者','日時','状態','操作'], rows));
+  var listCard = admCard('通報一覧（'+list.length+'件）', extra, '<div style="max-height:640px;overflow-y:auto">'+rows+'</div>');
+
+  // ---- 右：選択した通報の詳細（このページ内で対応） ----
+  var preview;
+  if(!sel){
+    preview = admCard('詳細','', '<div style="padding:40px;text-align:center;color:#94a1b5;font-size:13px">左の一覧から通報を選んでください。</div>');
+  } else {
+    function row(k, v){ return '<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid #eef1f7"><div style="width:88px;flex-shrink:0;font-size:12px;font-weight:700;color:#8a97ac">'+k+'</div><div style="flex:1;font-size:13px;color:#3a465f;line-height:1.7">'+v+'</div></div>'; }
+    var actions = sel.status==='pending'
+      ? '<div style="display:flex;gap:9px;flex-wrap:wrap">'
+        + admActionBtn('対応済みにする','data-admin-report-resolve="'+sel.id+'"','primary')
+        + admActionBtn('通報を削除','data-admin-report-del="'+sel.id+'"','danger') + '</div>'
+      : '<div style="display:flex;gap:9px;flex-wrap:wrap">'
+        + admActionBtn('通報を削除','data-admin-report-del="'+sel.id+'"','danger') + '</div>';
+
+    var inner = '<div style="padding:20px 22px">'
+      + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+admBadge(sel.type,'#5a6675','#eef1f7')+admStatusBadge(sel.status)+'</div>'
+      + '<h3 style="margin:12px 0 0;font-size:16.5px;font-weight:900;color:#14233f;line-height:1.6">'+esc(sel.target)+'</h3>'
+      + '<div style="margin-top:16px">'
+      + row('通報理由','<span style="font-weight:700;color:#c0392b">'+esc(sel.reason)+'</span>')
+      + row('通報者', esc(sel.reporter))
+      + row('日時', esc(sel.time||''))
+      + row('状態', sel.status==='pending' ? '未対応（確認と対応が必要です）' : '対応済み')
+      + '</div>'
+      + '<div style="margin-top:18px">'+actions+'</div>'
+      + '<p style="font-size:11.5px;color:#94a1b5;line-height:1.8;margin:16px 0 0">対象の投稿そのものを非表示にする場合は「相談管理」から該当の相談を選び、非表示にしてください。</p>'
+      + '</div>';
+    preview = admCard('詳細','', inner);
+  }
+
+  return admPageHead('通報対応','ユーザーからの通報を確認し、対応できます。一覧から選ぶと、このページ内で詳細を確認できます。')
+    + '<div class="admin-split">'+listCard+preview+'</div>';
 }
 
 // 管理画面のトップバーに表示するアカウント（ログイン中なら実アカウント、未設定ならデモ表示）
@@ -3328,7 +3360,7 @@ function on(sel,evt,fn){ var n=document.getElementById(sel); if(n) n.addEventLis
 // handlers across re-renders, which would fire toggles multiple times.
 function setupDelegation(){
   document.body.addEventListener('click', function(e){
-    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-menu]');
+    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-menu]');
     if(!t) return;
     if(t.hasAttribute('data-like') || t.hasAttribute('data-bookmark') || t.hasAttribute('data-helpful')) e.stopPropagation();
 
@@ -3421,12 +3453,13 @@ function setupDelegation(){
     if(t.hasAttribute('data-admin-back')){ go('home'); return; }
     if(t.hasAttribute('data-admin-tab')){ state.adminTab = t.getAttribute('data-admin-tab'); render(); toTop(); return; }
     if(t.hasAttribute('data-admin-view')){ state.adminSelectedId = t.getAttribute('data-admin-view'); render(); return; }
+    if(t.hasAttribute('data-admin-report-view')){ state.adminReportId = t.getAttribute('data-admin-report-view'); render(); return; }
     if(t.hasAttribute('data-admin-hide')){ var ac=find(t.getAttribute('data-admin-hide')); if(ac){ ac.hidden=!ac.hidden; if(window.snDb && window.snDb.updateConsultation) window.snDb.updateConsultation(ac.id, {hidden: ac.hidden}); render(); toast(ac.hidden?'相談を非表示にしました':'相談を再表示しました'); } return; }
     if(t.hasAttribute('data-admin-user')){ var au=findById(state.adminUsers, t.getAttribute('data-admin-user')); if(au){ au.status=au.status==='suspended'?'active':'suspended'; render(); toast(au.status==='suspended'?'ユーザーを利用停止にしました':'利用停止を解除しました'); } return; }
     if(t.hasAttribute('data-admin-news-del')){ var nid=t.getAttribute('data-admin-news-del'); state.newsItems=state.newsItems.filter(function(n){ return n.id!==nid; }); render(); toast('お知らせを削除しました'); return; }
     if(t.hasAttribute('data-admin-sn-del')){ var sid=t.getAttribute('data-admin-sn-del'); state.senpaiNews=state.senpaiNews.filter(function(n){ return n.id!==sid; }); render(); toast('先輩のお知らせを削除しました'); return; }
     if(t.hasAttribute('data-admin-report-resolve')){ var rr=findById(state.adminReports, t.getAttribute('data-admin-report-resolve')); if(rr){ rr.status='resolved'; render(); toast('対応済みにしました'); } return; }
-    if(t.hasAttribute('data-admin-report-del')){ var rid=t.getAttribute('data-admin-report-del'); state.adminReports=state.adminReports.filter(function(r){ return r.id!==rid; }); render(); toast('通報を削除しました'); return; }
+    if(t.hasAttribute('data-admin-report-del')){ var rid=t.getAttribute('data-admin-report-del'); state.adminReports=state.adminReports.filter(function(r){ return r.id!==rid; }); if(state.adminReportId===rid) state.adminReportId=null; render(); toast('通報を削除しました'); return; }
   });
 }
 
