@@ -884,21 +884,6 @@ function featuresHTML(){
 function homeHTML(){
   var st = computeStats();
   var avgLabel = st.avgHours > 0 ? String(st.avgHours < 10 ? Math.round(st.avgHours * 10) / 10 : Math.round(st.avgHours)) : '—';
-  var stats = [
-    [chat(22),'相談件数', st.total.toLocaleString(),'件','校内の累計相談数'],
-    ['<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2f73e8" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg>','回答率', String(st.rate),'%','質問に対する回答率'],
-    ['<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2f73e8" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>','平均返信時間', avgLabel,'時間','先輩からの平均返信時間'],
-    ['<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2f73e8" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><circle cx="17" cy="9" r="2.6"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5M15 19c0-2.6 1.5-4 3.5-4S22 16.4 22 19"/></svg>','回答した先輩', st.senpai.toLocaleString(),'人','在校生・卒業生の先輩']
-  ];
-  var statsHTML = stats.map(function(s,i){
-    var br = i<3 ? 'border-right:1px solid #edf1f8' : '';
-    return '<div class="rs-stat" style="display:flex;gap:14px;align-items:center;justify-content:center;'+br+'">'
-      + '<div style="width:46px;height:46px;border-radius:50%;background:#e8f1fe;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+s[0]+'</div>'
-      + '<div><div style="font-size:12px;color:#66738c;font-weight:500">'+s[1]+'</div>'
-      + '<div style="margin-top:1px"><span class="num" style="font-size:28px;color:#1b2942">'+s[2]+'</span><span style="font-size:12px;color:#66738c;margin-left:3px">'+s[3]+'</span></div>'
-      + '<div style="font-size:11px;color:#9aa6ba">'+s[4]+'</div></div></div>';
-  }).join('');
-
 
   // 人気の相談例（カード内のリスト）
   var CAT_ILL = { shinro:'ill-cap', benkyo:'ill-girl-book', gakko:'ill-highfive', bukatsu:'ill-trophy', ningen:'ill-chat', career:'ill-growth', other:'ill-chat' };
@@ -964,8 +949,6 @@ function homeHTML(){
     + '<div><div style="font-size:15px;font-weight:700;color:#1b2942">私も同じ悩みがありました！</div><div style="font-size:12.5px;color:#5a6678;line-height:1.7;margin-top:4px">オープンキャンパスは絶対行くべきです。実際に行ってみると、雰囲気や学びたいことが具体的にイメージできますよ！</div></div></div></div>'
     + '</div></div></section>'
     + '</div>'
-    /* stats */
-    + '<section class="rs-pad reveal" style="max-width:1180px;margin:52px auto 0;padding:0 28px"><div class="rs-stats" style="border:1px solid #e7edf6;border-radius:12px;padding:34px 10px;display:grid;grid-template-columns:repeat(4,1fr);background:#fff;box-shadow:0 8px 24px rgba(20,40,80,.05)">'+statsHTML+'</div></section>'
     /* features */
     + featuresHTML()
     /* mission / 実績 */
@@ -1000,7 +983,7 @@ function footerHTML(){
     + col('サポート',[['よくある質問','data-support="faq"'],['お問い合わせ','data-support="contact"'],['サポートセンター','data-support=""'],['利用規約','data-legal="terms"']])
     + col('その他',[['運営について','data-nav="about"'],['プライバシーポリシー','data-legal="privacy"'],['運営会社','data-info="company"'],['運営管理（管理者）','data-admin="1"']])
     + '<div><div style="font-size:12px;font-weight:700;color:#3a465f;margin-bottom:10px">公式SNS</div><div style="display:flex;gap:8px">'+sns+'</div></div>'
-    + '</div><div style="max-width:1180px;margin:24px auto 0;font-size:11px;color:#9aa6ba">© 2024 SenpaiNet. All rights reserved.</div></footer>';
+    + '</div><div style="max-width:1180px;margin:24px auto 0;font-size:11px;color:#9aa6ba">© 2026 SenpaiNet. All rights reserved.</div></footer>';
 }
 
 /* ============ BROWSE ============ */
