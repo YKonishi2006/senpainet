@@ -54,6 +54,17 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
+    // ログインユーザーのプロフィール：本人だけが読み書きできる（運営は閲覧可）
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read: if isAdmin();
+
+      // マイページ用の投稿履歴（本人のみ）。相談本体は匿名のままで uid を持たない。
+      match /myPosts/{pid} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+
     // 先輩プロフィール（得意分野タグ＋通知先メール）
     // メールアドレスを含むため公開読み取りは禁止。作成は誰でも（自己登録）、
     // 閲覧・編集・削除は運営のみ。マッチングとメール送信はサーバー側(Functions)が行う。

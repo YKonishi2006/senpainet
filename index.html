@@ -309,7 +309,7 @@ var state = {
   answering: false, answerText: '', answerAnon: false,
   replyTo: null, replyText: '',
   browseSort: 'new', browseLimit: 4, answerSort: 'new',
-  userName: '在校生ユーザー', userKaisei: 18, userUniv: '', userFaculty: '', menuOpen: false, loggedIn: true, mypageTab: 'overview',
+  userName: '在校生ユーザー', userKaisei: 18, userUniv: '', userFaculty: '', userTags: [], menuOpen: false, loggedIn: false, pendingSignIn: false, mypageTab: 'overview',
   setupStatus: null, setupGrade: null, setupGradKaisei: null, setupUniv: '', setupFaculty: '', setupNick: '',
   communityGroup: null, communityText: '',
   communityFilter: 'all', communityFeedTab: 'all', communitySort: 'popular', followedUsers: {},
@@ -503,18 +503,12 @@ function authModal(kind){
     + '<h2 style="font-size:20px;font-weight:900;color:#1b2942;margin:14px 0 4px">'+heading+'</h2>'
     + '<p style="font-size:12.5px;color:#66738c;margin:0 0 20px">完全匿名で利用できます。</p>'
     + googleBtn
-    + '<form data-modal-form="'+kind+'">'
-    + nameField
-    + '<label style="display:block;font-size:13px;font-weight:700;color:#3a465f;margin:0 0 6px">メールアドレス</label>'
-    + '<input name="email" type="email" required placeholder="you@example.com" style="width:100%;border:1.5px solid #dde4f1;border-radius:10px;padding:11px 13px;font-size:14px;outline:none;margin-bottom:16px">'
-    + '<label style="display:block;font-size:13px;font-weight:700;color:#3a465f;margin:0 0 6px">パスワード</label>'
-    + '<input name="password" type="password" required placeholder="••••••••" style="width:100%;border:1.5px solid #dde4f1;border-radius:10px;padding:11px 13px;font-size:14px;outline:none;margin-bottom:22px">'
-    + '<button type="submit" style="width:100%;border:none;cursor:pointer;background:#2f73e8;color:#fff;font-weight:700;font-size:15px;padding:13px;border-radius:10px">'+heading+'</button>'
-    + '</form>'
-    + '<div style="text-align:center;margin-top:16px;font-size:12.5px;color:#66738c">'
-    + (isLogin ? 'アカウントをお持ちでない方は <span data-auth="signup" style="color:#2f73e8;font-weight:700;cursor:pointer">新規登録</span>'
-               : 'すでにアカウントをお持ちの方は <span data-auth="login" style="color:#2f73e8;font-weight:700;cursor:pointer">ログイン</span>')
-    + '</div></div>';
+    + '<div style="background:#f5f8fd;border:1px solid #e7edf6;border-radius:12px;padding:14px 16px">'
+    + '<div style="font-size:12.5px;font-weight:700;color:#3a465f;margin-bottom:6px">ログインでできること</div>'
+    + '<ul style="margin:0;padding-left:18px;font-size:12px;color:#66738c;line-height:1.9">'
+    + '<li>マイページで自分の相談と回答状況を確認</li><li>学年・回生が毎年度自動でくり上がる</li><li>先輩は得意分野のタグ設定・お知らせを受け取れる</li></ul></div>'
+    + '<p style="font-size:11.5px;color:#94a1b5;line-height:1.8;margin:14px 0 0">相談・回答は<strong style="color:#3a465f">匿名で公開</strong>され、他のユーザーに名前やメールアドレスが表示されることはありません。</p>'
+    + '</div>';
 }
 
 function notificationsModal(){
@@ -600,6 +594,15 @@ function completeSetup(){
   }
   var nick = (state.setupNick||'').trim();
   state.userName = nick || (statusOf(state.userKaisei).type==='grad' ? '卒業生ユーザー' : '在校生ユーザー');
+  // ログイン中ならプロフィールをアカウントに保存（次回から自動で復元される）
+  if(state.authUser && state.authUser.uid && window.snDb && window.snDb.saveUserProfile){
+    window.snDb.saveUserProfile(state.authUser.uid, {
+      email: state.authUser.email || '', name: state.authUser.name || '',
+      status: state.setupStatus, kaisei: state.userKaisei, grade: state.setupGrade || null,
+      univ: state.userUniv, faculty: state.userFaculty, nickname: nick,
+      tags: (state.setupTags||[]).slice(), notify: !!state.setupNotify, updatedAt: Date.now()
+    });
+  }
   go('mypage'); toast('プロフィールを作成しました');
 }
 function handleModalForm(kind, form){
@@ -690,6 +693,10 @@ function addUserConsultation(){
   });
   // cid でマイページの「自分の相談」から相談ページを開けるようにする
   state.myPosts.unshift({ cid:id, category:state.pcat, title:state.ptitle.trim(), nAnswers:0, time:'たった今', status:'回答受付中' });
+  // ログイン中なら自分のアカウント配下にも記録（相談本体は匿名のまま＝uidは持たせない）
+  if(state.authUser && state.authUser.uid && window.snDb && window.snDb.addMyPost){
+    window.snDb.addMyPost(state.authUser.uid, id, { title:state.ptitle.trim(), category:state.pcat, status:'回答受付中', nAnswers:0, time:'たった今', createdAt:Date.now() });
+  }
   // Firestore に保存（全員に反映）。未設定/失敗時はローカルのみ。
   if(window.snDb && window.snDb.addConsultation) window.snDb.addConsultation(state.consultations[0]);
   // タグが付いていれば、該当分野の先輩への通知をキューに積む
@@ -940,7 +947,7 @@ function homeHTML(){
     + '<h1 class="rs-hero-h1" style="margin:0;font-size:46px;line-height:1.28;font-weight:900;letter-spacing:-.01em;color:#1b2942"><span style="display:inline-block;white-space:nowrap">その悩み、</span><span style="display:inline-block;white-space:nowrap"><span style="color:#2f73e8">先輩に</span>相談してみよう。</span></h1>'
     + '<p style="margin:20px 0 0;font-size:16px;line-height:1.9;color:#3a465f;font-weight:500">進路や勉強、学校生活の悩みを、同じ学校の先輩に匿名で相談できます。<br>在校生の先輩も卒業生も、自分の経験をもとに答えてくれます。</p>'
     + '<div style="margin-top:24px;display:flex;align-items:flex-start;gap:12px;background:#eef4ff;border:1px solid #cfe0fb;border-radius:14px;padding:14px 16px;max-width:430px">'+svg.shield
-    + '<div><div style="font-size:14px;font-weight:700;color:#1f5fd0">完全匿名</div><div style="font-size:12.5px;color:#5a6678;margin-top:2px">先生にも学校にも友達にも、名前は公開されません</div></div></div>'
+    + '<div><div style="font-size:14px;font-weight:700;color:#1f5fd0">完全匿名</div><div style="font-size:12.5px;color:#5a6678;margin-top:2px">完全匿名で安心してご利用ください。</div></div></div>'
     + '<div style="margin-top:26px;display:flex;gap:14px;flex-wrap:wrap">'
     + '<button data-nav="post" style="border:none;cursor:pointer;background:#f5cb4d;color:#3d2f06;border-radius:14px;padding:14px 26px;text-align:left;box-shadow:0 6px 16px rgba(225,180,40,.32)"><div style="font-size:16px;font-weight:700">匿名で相談してみる</div><div style="font-size:11.5px;font-weight:500;opacity:.75;margin-top:2px">30秒でカンタン投稿</div></button>'
     + '<button data-nav="browse" style="cursor:pointer;background:#fff;color:#1f5fd0;border:1.5px solid #b6d2f7;border-radius:14px;padding:14px 26px;text-align:left"><div style="font-size:16px;font-weight:700">相談を探してみる</div><div style="font-size:11.5px;font-weight:500;color:#5c76a0;margin-top:2px">先輩の経験を参考にしよう</div></button>'
@@ -3299,12 +3306,10 @@ function setupDelegation(){
     if(t.hasAttribute('data-grade')){ var gv=t.getAttribute('data-grade'); state.activeGrade = gv==='all'?'all':parseInt(gv,10); state.browseLimit = 4; render(); return; }
     if(t.hasAttribute('data-auth')){ closeMenu(); return openModal(authModal(t.getAttribute('data-auth')), 420); }
     if(t.hasAttribute('data-google')){
-      // デモ: 実際のGoogle認証（Google Identity Services）はバックエンドとOAuthクライアントIDが必要。
-      // ここではログイン成功として扱う。
-      var wasSignup = t.getAttribute('data-google')==='signup';
+      // 実際の Google ログイン。完了は onAuthStateChanged → snOnAuthChange で処理する。
       closeMenu(); closeModal();
-      if(wasSignup){ toast('Googleで登録しました'); startSetup(''); }
-      else { state.loggedIn = true; toast('Googleでログインしました'); go('mypage'); }
+      if(window.snAuthApi && window.snAuthApi.signIn){ state.pendingSignIn = true; window.snAuthApi.signIn(); }
+      else { toast('ログインは現在利用できません'); }
       return;
     }
     if(t.hasAttribute('data-info')){ closeMenu(); return infoModal(t.getAttribute('data-info')); }
@@ -3360,7 +3365,12 @@ function setupDelegation(){
     if(t.hasAttribute('data-post-edit')){ if(t.getAttribute('data-post-edit')==='context') state.pMoreOpen=true; state.pstep=1; render(); toTop(); return; }
     if(t.hasAttribute('data-scroll')){ var el=document.getElementById(t.getAttribute('data-scroll')); if(el) el.scrollIntoView({behavior:'smooth'}); return; }
     if(t.hasAttribute('data-profile')) return openModal(profileModal(), 420);
-    if(t.hasAttribute('data-logout')){ state.loggedIn = false; closeModal(); toast('ログアウトしました'); go('home'); return; }
+    if(t.hasAttribute('data-logout')){
+      closeModal();
+      if(window.snAuthApi && window.snAuthApi.signOut) window.snAuthApi.signOut();
+      state.loggedIn=false; state.authUser=null; state.adminAuthorized=false; state.myPosts=[];
+      toast('ログアウトしました'); go('home'); return;
+    }
     if(t.hasAttribute('data-mypost')){ var p=state.myPosts[+t.getAttribute('data-mypost')]; if(p) toast('「'+p.title+'」（'+p.status+'）'); return; }
     if(t.hasAttribute('data-more-toast')) return toast('これ以上の項目はありません');
     if(t.hasAttribute('data-notif')){ var n=findNotif(t.getAttribute('data-notif')); if(n){ n.unread=false; closeModal(); render(); } return; }
@@ -3472,13 +3482,32 @@ applyHash();
 window.addEventListener('hashchange', function(){ applyHash(); render(); toTop(); });
 
 // Firebase Auth のコールバック（別の <script type="module"> から呼ばれる）
-window.snOnAuthChange = function(user, authorized, configured){
+window.snOnAuthChange = function(user, authorized, configured, profile){
+  var wasPending = state.pendingSignIn;
   state.authUser = user || null;
   state.adminAuthorized = !!authorized;
   state.authConfigured = configured !== false;
   state.authReady = true;
-  if(state.screen === 'admin') render();
+  state.loggedIn = !!user;
+  // 保存済みプロフィールがあれば復元（回生・ニックネーム・大学・タグ）
+  if(user && profile){
+    if(profile.kaisei) state.userKaisei = profile.kaisei;
+    if(profile.nickname) state.userName = profile.nickname;
+    if(profile.univ != null) state.userUniv = profile.univ;
+    if(profile.faculty != null) state.userFaculty = profile.faculty;
+    if(Array.isArray(profile.tags)) state.userTags = profile.tags;
+  }
+  if(!user) state.myPosts = [];
+  state.pendingSignIn = false;
+  // ボタンからログインした直後だけ画面を移動する
+  if(wasPending && user){
+    if(profile){ toast('ログインしました'); go('mypage'); return; }
+    startSetup(''); return; // 初回はプロフィール作成へ
+  }
+  render();
 };
+// ログインユーザーの投稿履歴（マイページ用）
+window.snOnMyPosts = function(list){ if(!Array.isArray(list)) return; state.myPosts = list; render(); };
 window.snAuthError = function(msg){ toast('ログインに失敗しました'); };
 // Firestore から相談一覧を受け取って差し替え（起動直後に一度）
 window.snOnConsultations = function(list){
@@ -3568,6 +3597,10 @@ render();
         addReply: async (cid, aid, r) => { localDirty = true; try { await addDoc(collection(db, "consultations", cid, "answers", aid, "replies"), r); } catch (e) {} },
         // 先輩プロフィール（得意分野タグ＋通知先メール）。メールは公開読み取り不可。
         saveSenpaiProfile: async (p) => { try { await addDoc(collection(db, "senpaiProfiles"), p); } catch (e) {} },
+        // ログインユーザーのプロフィール（本人のみ読み書き可）
+        saveUserProfile: async (uid, p) => { try { await setDoc(doc(db, "users", uid), p, { merge: true }); } catch (e) {} },
+        // マイページ用の投稿履歴（相談本体は匿名のまま、本人の配下にだけ記録）
+        addMyPost: async (uid, cid, p) => { try { await setDoc(doc(db, "users", uid, "myPosts", cid), p); } catch (e) {} },
         // タグ付き相談の通知キュー。マッチングとメール送信はサーバー側で行う。
         enqueueNotify: async (q) => { try { await addDoc(collection(db, "mailQueue"), q); } catch (e) {} }
       };
@@ -3631,8 +3664,20 @@ render();
 
       onAuthStateChanged(auth, async (user) => {
         const authorized = user ? await isAuthorized(user) : false;
-        const u = user ? { email: user.email, name: user.displayName || "", photo: user.photoURL || "" } : null;
-        if (window.snOnAuthChange) window.snOnAuthChange(u, authorized, true);
+        // 保存済みプロフィール（回生・ニックネーム等）を読み込んで復元する
+        let profile = null;
+        if (user) { try { const ps = await getDoc(doc(db, "users", user.uid)); if (ps.exists()) profile = ps.data(); } catch (e) {} }
+        const u = user ? { uid: user.uid, email: user.email, name: user.displayName || "", photo: user.photoURL || "" } : null;
+        if (window.snOnAuthChange) window.snOnAuthChange(u, authorized, true, profile);
+        // マイページ用の投稿履歴（本人のみ読める）
+        if (user && window.snOnMyPosts) {
+          try {
+            const ps2 = await getDocs(collection(db, "users", user.uid, "myPosts"));
+            const arr = []; ps2.forEach((pd) => { const o = pd.data() || {}; o.cid = pd.id; arr.push(o); });
+            arr.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            window.snOnMyPosts(arr);
+          } catch (e) {}
+        }
       });
     } catch (e) {
       if (window.snOnAuthChange) window.snOnAuthChange(null, false, false);
