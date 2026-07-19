@@ -1,0 +1,13 @@
+{
+  "name": "senpainet-functions",
+  "description": "タグ付き相談を該当分野の先輩にメール通知する Cloud Functions",
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.1.0"
+  },
+  "private": true
+}

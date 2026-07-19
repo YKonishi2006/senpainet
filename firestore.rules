@@ -54,6 +54,24 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
+    // 先輩プロフィール（得意分野タグ＋通知先メール）
+    // メールアドレスを含むため公開読み取りは禁止。作成は誰でも（自己登録）、
+    // 閲覧・編集・削除は運営のみ。マッチングとメール送信はサーバー側(Functions)が行う。
+    match /senpaiProfiles/{id} {
+      allow create: if request.resource.data.email is string
+                    && request.resource.data.email.size() > 3
+                    && request.resource.data.email.size() <= 200
+                    && request.resource.data.tags is list;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // 通知キュー（タグ付き相談の通知依頼）。作成は誰でも、閲覧・処理は運営/サーバーのみ。
+    match /mailQueue/{id} {
+      allow create: if request.resource.data.consultationId is string
+                    && request.resource.data.tags is list;
+      allow read, update, delete: if isAdmin();
+    }
+
     // 運営メンバー：自分の許可確認のためだけ読み取り可。書き込みは不可（招待は管理者が別途）
     match /admins/{email} {
       allow read: if request.auth != null && request.auth.token.email == email;
