@@ -741,7 +741,7 @@ function mobileMenuHTML(){
   function item(label, attr, active){
     return '<div '+attr+' style="display:flex;align-items:center;justify-content:space-between;padding:14px 4px;font-size:15px;font-weight:'+(active?700:500)+';color:'+(active?'#2f73e8':'#3a465f')+';border-bottom:1px solid #edf1f8;cursor:pointer">'+label+'<span style="color:#bcc6d6">›</span></div>';
   }
-  var navDefs = [['ホーム','data-nav="home"','home'],['相談を探す','data-nav="browse"','browse'],['相談する','data-nav="post"','post'],['先輩の方へ','data-nav="alumni"','alumni'],['コミュニティ','data-nav="community"','community'],['お知らせ','data-nav="news"','news'],['使い方','data-nav="howto"','howto']];
+  var navDefs = [['ホーム','data-nav="home"','home'],['SenpaiNetについて','data-nav="about"','about'],['相談を探す','data-nav="browse"','browse'],['相談する','data-nav="post"','post'],['先輩の方へ','data-nav="alumni"','alumni'],['コミュニティ','data-nav="community"','community'],['お知らせ','data-nav="news"','news'],['使い方','data-nav="howto"','howto']];
   var items = navDefs.map(function(d){ return item(d[0], d[1], d[2] && state.screen===d[2]); }).join('');
   var actions;
   if(!state.loggedIn){
@@ -760,7 +760,7 @@ function mobileMenuHTML(){
 
 /* ============ HEADER ============ */
 function headerHTML(){
-  var navDefs = [['ホーム','nav','home'],['相談を探す','nav','browse'],['相談する','nav','post'],['先輩の方へ','nav','alumni'],['コミュニティ','nav','community'],['お知らせ','nav','news'],['使い方','nav','howto']];
+  var navDefs = [['ホーム','nav','home'],['SenpaiNetについて','nav','about'],['相談を探す','nav','browse'],['相談する','nav','post'],['先輩の方へ','nav','alumni'],['コミュニティ','nav','community'],['お知らせ','nav','news'],['使い方','nav','howto']];
   var nav = navDefs.map(function(d){
     var label=d[0], kind=d[1], key=d[2];
     var active = kind==='nav' && state.screen===key;
@@ -790,7 +790,7 @@ function headerHTML(){
   return '<header style="position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid #e7edf6">'
     + '<div class="rs-pad" style="max-width:1180px;margin:0 auto;padding:0 28px;height:66px;display:flex;align-items:center;justify-content:space-between">'
     + '<div data-nav="home" style="display:flex;align-items:center;cursor:pointer"><img src="assets/logo/logo-horizontal.png" alt="SenpaiNet" style="height:34px;width:auto;display:block"></div>'
-    + '<nav class="rs-nav" style="display:flex;align-items:center;gap:30px">'+nav+'</nav>'
+    + '<nav class="rs-nav" style="display:flex;align-items:center;gap:22px">'+nav+'</nav>'
     + '<div style="display:flex;align-items:center;gap:12px">'
     + '<div class="rs-actions" style="display:flex;align-items:center;gap:12px">'+right+'</div>'
     + burger
