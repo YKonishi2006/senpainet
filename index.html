@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SenpaiNet｜ISS生向け相談ｐ</title>
+<title>SenpaiNet｜ISS生向け相談プラットフォーム</title>
 <link rel="icon" type="image/png" href="assets/logo/app-icon.png">
 <link rel="apple-touch-icon" href="assets/logo/app-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -712,6 +712,36 @@ function findOutreach(id){ for(var i=0;i<state.outreachPosts.length;i++){ if(sta
 function findById(arr, id){ for(var i=0;i<arr.length;i++){ if(arr[i].id===id) return arr[i]; } return null; }
 // 通報の投稿者アカウント
 function reportAuthor(r){ return (r && r.authorId) ? findById(state.adminUsers, r.authorId) : null; }
+// 通報対応の実行前に出す確認ダイアログ
+function reportConfirmModal(action, id){
+  var r = findById(state.adminReports, id); if(!r) return '';
+  var au = reportAuthor(r);
+  var who = au ? au.handle : '投稿者（特定できません）';
+  // 削除対象の内容
+  var what = r.target;
+  if(r.targetType==='consultation'){ var c=find(r.targetId); if(c) what = c.title; }
+  else if(r.targetType==='answer'){ var pc=find(r.targetId); var a=pc&&pc.answers?pc.answers[r.answerIndex||0]:null; if(a) what = (a.body||'').slice(0,40)+((a.body||'').length>40?'…':''); }
+  else if(r.targetType==='community'){ var cp=findCommunityPost(r.targetId); if(cp) what = cp.title; }
+
+  var cfg = {
+    warn:    { title:'投稿者に警告しますか？', desc:'この投稿者に警告が通知され、警告の累計回数に 1 回加算されます。', target:who, btn:'警告する', color:'#c07a12', attr:'data-report-warn="'+id+'"' },
+    suspend: { title:'アカウントを停止しますか？', desc:'停止すると、このアカウントは相談の投稿・回答ができなくなります。あとから解除できます。', target:who, btn:'停止する', color:'#c0392b', attr:'data-report-suspend="'+id+'"' },
+    del:     { title:'通報された投稿を削除しますか？', desc:'削除するとこの投稿は公開ページから消え、元に戻すことはできません。', target:what, btn:'削除する', color:'#c0392b', attr:'data-report-delete="'+id+'"' },
+    dismiss: { title:'対応不要として閉じますか？', desc:'この通報は「対応不要」として記録され、未対応の一覧から外れます。', target:what, btn:'閉じる', color:'#2f73e8', attr:'data-report-dismiss="'+id+'"' }
+  }[action];
+  if(!cfg) return '';
+
+  return '<div style="padding:30px 28px 26px">'
+    + '<h2 style="font-size:18px;font-weight:900;color:#14233f;margin:0 0 10px">'+cfg.title+'</h2>'
+    + '<p style="font-size:13px;color:#5a6678;line-height:1.9;margin:0 0 16px">'+cfg.desc+'</p>'
+    + '<div style="background:#f7f9fc;border:1px solid #e7edf6;border-radius:11px;padding:13px 15px">'
+    + '<div style="font-size:11px;font-weight:700;color:#8a97ac;margin-bottom:5px">対象</div>'
+    + '<div style="font-size:13px;font-weight:700;color:#1b2942;line-height:1.6">'+esc(cfg.target)+'</div></div>'
+    + '<div style="display:flex;gap:12px;justify-content:flex-end;margin-top:22px">'
+    + '<button data-modal-close-btn style="cursor:pointer;background:#fff;border:1.5px solid #d4dde9;color:#3a465f;font-weight:700;font-size:13.5px;padding:11px 22px;border-radius:10px">キャンセル</button>'
+    + '<button '+cfg.attr+' style="cursor:pointer;border:none;background:'+cfg.color+';color:#fff;font-weight:700;font-size:13.5px;padding:11px 24px;border-radius:10px">'+cfg.btn+'</button>'
+    + '</div></div>';
+}
 // 通報された投稿そのものを削除する（相談／回答／コミュニティ投稿）
 function deleteReportedContent(r){
   if(r.targetType==='consultation'){
@@ -3074,10 +3104,10 @@ function adminReports(){
     var measures = sel.status==='pending'
       ? '<div style="margin-top:18px"><div style="font-size:12px;font-weight:800;color:#8a97ac;margin-bottom:9px">この通報への対応</div>'
         + '<div style="display:flex;gap:9px;flex-wrap:wrap">'
-        + admActionBtn('投稿者に警告','data-report-warn="'+sel.id+'"','')
-        + admActionBtn('アカウントを停止','data-report-suspend="'+sel.id+'"','danger')
-        + admActionBtn('通報された投稿を削除','data-report-delete="'+sel.id+'"','danger')
-        + admActionBtn('対応不要として閉じる','data-report-dismiss="'+sel.id+'"','')
+        + admActionBtn('投稿者に警告','data-report-confirm="warn:'+sel.id+'"','')
+        + admActionBtn('アカウントを停止','data-report-confirm="suspend:'+sel.id+'"','danger')
+        + admActionBtn('通報された投稿を削除','data-report-confirm="del:'+sel.id+'"','danger')
+        + admActionBtn('対応不要として閉じる','data-report-confirm="dismiss:'+sel.id+'"','')
         + '</div>'
         + '<p style="font-size:11px;color:#94a1b5;line-height:1.8;margin:10px 0 0">警告は投稿者に通知され、累計回数が記録されます。停止したアカウントは投稿・回答ができなくなります。削除した投稿は元に戻せません。</p></div>'
       : '<div style="margin-top:18px;background:#f4f8fd;border:1px solid #e3ecfb;border-radius:12px;padding:14px 16px">'
@@ -3468,7 +3498,7 @@ function on(sel,evt,fn){ var n=document.getElementById(sel); if(n) n.addEventLis
 // handlers across re-renders, which would fire toggles multiple times.
 function setupDelegation(){
   document.body.addEventListener('click', function(e){
-    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-open-cons],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-report-warn],[data-report-suspend],[data-report-delete],[data-report-dismiss],[data-menu]');
+    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-open-cons],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-report-confirm],[data-report-warn],[data-report-suspend],[data-report-delete],[data-report-dismiss],[data-menu]');
     if(!t) return;
     if(t.hasAttribute('data-like') || t.hasAttribute('data-bookmark') || t.hasAttribute('data-helpful')) e.stopPropagation();
 
@@ -3568,8 +3598,13 @@ function setupDelegation(){
     if(t.hasAttribute('data-admin-news-del')){ var nid=t.getAttribute('data-admin-news-del'); state.newsItems=state.newsItems.filter(function(n){ return n.id!==nid; }); render(); toast('お知らせを削除しました'); return; }
     if(t.hasAttribute('data-admin-sn-del')){ var sid=t.getAttribute('data-admin-sn-del'); state.senpaiNews=state.senpaiNews.filter(function(n){ return n.id!==sid; }); render(); toast('先輩のお知らせを削除しました'); return; }
     // ---- 通報への対応（警告／アカウント停止／投稿の削除） ----
+    if(t.hasAttribute('data-report-confirm')){
+      var cf=(t.getAttribute('data-report-confirm')||'').split(':');
+      return openModal(reportConfirmModal(cf[0], cf[1]), 420);
+    }
     if(t.hasAttribute('data-report-warn')){
       var rw=findById(state.adminReports, t.getAttribute('data-report-warn'));
+      closeModal();
       if(rw){ var uw=reportAuthor(rw); if(uw) uw.warnings=(uw.warnings||0)+1;
         rw.status='resolved'; rw.action='投稿者に警告'; rw.actionAt='たった今'; state.adminReportId=rw.id;
         render(); toast(uw ? ('投稿者に警告しました（累計 '+uw.warnings+' 回）') : '警告を記録しました'); }
@@ -3577,6 +3612,7 @@ function setupDelegation(){
     }
     if(t.hasAttribute('data-report-suspend')){
       var rs=findById(state.adminReports, t.getAttribute('data-report-suspend'));
+      closeModal();
       if(rs){ var us=reportAuthor(rs); if(us) us.status='suspended';
         rs.status='resolved'; rs.action='アカウント停止'; rs.actionAt='たった今'; state.adminReportId=rs.id;
         render(); toast(us ? ('アカウントを停止しました（'+us.handle+'）') : 'アカウント停止を記録しました'); }
@@ -3584,12 +3620,14 @@ function setupDelegation(){
     }
     if(t.hasAttribute('data-report-delete')){
       var rd=findById(state.adminReports, t.getAttribute('data-report-delete'));
+      closeModal();
       if(rd){ deleteReportedContent(rd); rd.status='resolved'; rd.action='投稿を削除'; rd.actionAt='たった今'; state.adminReportId=rd.id;
         render(); toast('通報された投稿を削除しました'); }
       return;
     }
     if(t.hasAttribute('data-report-dismiss')){
       var rn=findById(state.adminReports, t.getAttribute('data-report-dismiss'));
+      closeModal();
       if(rn){ rn.status='resolved'; rn.action='対応不要'; rn.actionAt='たった今'; state.adminReportId=rn.id; render(); toast('対応不要として処理しました'); }
       return;
     }
