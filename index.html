@@ -343,7 +343,7 @@ var state = {
   ],
   // ---- 運営（管理者）コンソール ----
   adminTab: 'dashboard', adminSelectedId: null, adminReportId: null,
-  adminMembers: [], adminMembersLoaded: false, adminMembersLoading: false, adminMembersError: false, adminNewEmail: '',
+  adminMembers: [], adminMembersLoaded: false, adminMembersLoading: false, adminMembersError: false, adminNewEmail: '', adminNewName: '',
   // Firebase 認証（Googleログイン＋招待制の許可リスト）
   authReady: false, authConfigured: false, authUser: null, adminAuthorized: false,
   adminUsers: [
@@ -725,11 +725,12 @@ function reportAuthor(r){ return (r && r.authorId) ? findById(state.adminUsers, 
 var INVITE_ENDPOINT = 'https://script.google.com/macros/s/AKfycbw-hD9VH3O-tGSa-IOnPbrWgIHgxvzbSw9iBN520DNm3x_5Zrs1imiN70lTZZs6AthxWg/exec';
 var INVITE_URL = 'https://ykonishi2006.github.io/senpainet/#admin';
 
-function inviteMail(email, by){
+function inviteMail(email, by, name){
   return {
     to: email,
     subject: '【SenpaiNet】運営メンバーに招待されました',
-    body: 'SenpaiNet の運営メンバーに追加されました。\n\n'
+    body: (name ? name + ' 様\n\n' : '')
+      + 'SenpaiNet の運営メンバーに追加されました。\n\n'
       + 'このメールアドレス（' + email + '）のGoogleアカウントで、管理コンソールにログインできます。\n\n'
       + '▼ 管理コンソール\n' + INVITE_URL + '\n\n'
       + 'ログイン方法：上記を開き「Googleでログイン」を選択してください。\n'
@@ -739,19 +740,19 @@ function inviteMail(email, by){
 }
 // A) Apps Script のウェブアプリに投げて自動送信する。
 //    text/plain で送ることで CORS のプリフライトを避けている。
-function sendInviteViaEndpoint(email, by){
+function sendInviteViaEndpoint(email, by, name){
   if(!INVITE_ENDPOINT) return null;
   return fetch(INVITE_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ to: email, by: by || '' })
+    body: JSON.stringify({ to: email, by: by || '', name: name || '' })
   }).then(function(r){ return r.json(); })
     .then(function(j){ return { ok: !!(j && j.ok), error: j && j.error }; })
     .catch(function(){ return { ok:false, error:'network' }; });
 }
 // B) 招待文を表示して、メールソフトで送る／コピーするダイアログ
-function inviteMailModal(email, by){
-  var m = inviteMail(email, by);
+function inviteMailModal(email, by, name){
+  var m = inviteMail(email, by, name);
   var mailto = 'mailto:' + encodeURIComponent(m.to)
     + '?subject=' + encodeURIComponent(m.subject)
     + '&body=' + encodeURIComponent(m.body);
@@ -768,8 +769,8 @@ function inviteMailModal(email, by){
     + '</div></div>';
 }
 // 招待を送る（自動送信できればそれ、無理ならダイアログ）
-function sendInvite(email, by, silentToast){
-  var p = sendInviteViaEndpoint(email, by);
+function sendInvite(email, by, name){
+  var p = sendInviteViaEndpoint(email, by, name);
   if(p){
     toast('招待メールを送信中…');
     p.then(function(res){
@@ -778,11 +779,11 @@ function sendInvite(email, by, silentToast){
               : res.error==='invalid recipient'   ? 'メールアドレスの形式が正しくありません'
               : '自動送信に失敗しました。手動で送ってください';
       toast(msg);
-      if(res.error!=='invalid recipient') openModal(inviteMailModal(email, by), 560);
+      if(res.error!=='invalid recipient') openModal(inviteMailModal(email, by, name), 560);
     });
     return;
   }
-  openModal(inviteMailModal(email, by), 560);
+  openModal(inviteMailModal(email, by, name), 560);
 }
 
 // 運営メンバー解除の確認ダイアログ
@@ -2815,6 +2816,12 @@ function admTable(headers, rows){
   return '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>'+th+'</tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
 function admTd(html, extra){ return '<td style="padding:13px 16px;border-bottom:1px solid #eef1f7;color:#3a465f;white-space:nowrap;'+(extra||'')+'">'+html+'</td>'; }
+// 入力欄にラベルを付ける（管理画面のフォーム用）
+function admField(label, inputHTML){
+  return '<div style="margin-bottom:12px">'
+    + '<div style="font-size:11.5px;font-weight:700;color:#8a97ac;margin-bottom:6px">'+label+'</div>'
+    + inputHTML + '</div>';
+}
 function admPageHead(title, sub){ return '<h1 style="margin:0 0 4px;font-size:22px;font-weight:900;color:#14233f">'+title+'</h1><p style="margin:0 0 22px;font-size:13px;color:#66738c">'+sub+'</p>'; }
 function admActionBtn(txt, attr, kind){
   var c = kind==='danger' ? '#c0392b' : (kind==='primary' ? '#2f73e8' : '#5a6675');
@@ -2883,11 +2890,11 @@ function adminMembersPage(){
   // 追加フォーム
   var addCard = admCard('メンバーを追加','',
     '<div style="padding:18px 20px">'
-    + '<p style="font-size:12.5px;color:#66738c;line-height:1.85;margin:0 0 12px">追加したメールアドレスのGoogleアカウントで、管理コンソールにログインできるようになります。</p>'
-    + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
-    + '<input id="admin-add-email" value="'+esc(state.adminNewEmail||'')+'" placeholder="例：staff@example.com" style="flex:1;min-width:220px;border:1.5px solid #dde4f1;border-radius:10px;padding:11px 13px;font-size:13.5px;color:#1b2942;outline:none">'
-    + '<button data-admin-add-member="1" style="cursor:pointer;border:none;background:#2f73e8;color:#fff;font-weight:700;font-size:13.5px;padding:11px 22px;border-radius:10px;white-space:nowrap">追加する</button>'
-    + '</div></div>');
+    + '<p style="font-size:12.5px;color:#66738c;line-height:1.85;margin:0 0 14px">追加したメールアドレスのGoogleアカウントで、管理コンソールにログインできるようになります。</p>'
+    + admField('お名前','<input id="admin-add-name" value="'+esc(state.adminNewName||'')+'" placeholder="例：小西 太郎" style="width:100%;box-sizing:border-box;border:1.5px solid #dde4f1;border-radius:10px;padding:11px 13px;font-size:13.5px;color:#1b2942;outline:none">')
+    + admField('メールアドレス','<input id="admin-add-email" value="'+esc(state.adminNewEmail||'')+'" placeholder="例：staff@example.com" style="width:100%;box-sizing:border-box;border:1.5px solid #dde4f1;border-radius:10px;padding:11px 13px;font-size:13.5px;color:#1b2942;outline:none">')
+    + '<button data-admin-add-member="1" style="cursor:pointer;border:none;background:#2f73e8;color:#fff;font-weight:700;font-size:13.5px;padding:12px 22px;border-radius:10px;width:100%;margin-top:4px">追加して招待する</button>'
+    + '</div>');
 
   // 一覧
   var body;
@@ -2901,19 +2908,35 @@ function adminMembersPage(){
     var rows = state.adminMembers.map(function(m){
       var isMe = (m.email||'').toLowerCase() === me;
       var added = m.addedAt ? new Date(m.addedAt).toLocaleDateString('ja-JP') : '—';
+      // 一度でもログインしていれば「登録済み」、まだなら「招待済み」
+      var joined = !!m.joinedAt;
+      var status = joined
+        ? admBadge('登録済み','#1e9e63','#e7f5ee')
+        : admBadge('招待済み','#c07a12','#fdf0dc');
+      var sub = joined && m.joinedAt
+        ? '<div style="font-size:11px;color:#94a1b5;margin-top:4px">'+esc(new Date(m.joinedAt).toLocaleDateString('ja-JP'))+' に初回ログイン</div>'
+        : '<div style="font-size:11px;color:#94a1b5;margin-top:4px">まだログインしていません</div>';
       return '<tr>'
-        + admTd('<span style="font-weight:700;color:#1b2942">'+esc(m.email)+'</span>'+(isMe?' '+admBadge('自分','#1f5fd0','#e8f1fe'):''))
+        + admTd('<div style="font-weight:700;color:#1b2942">'+esc(m.name||'（名前未登録）')+(isMe?' '+admBadge('自分','#1f5fd0','#e8f1fe'):'')+'</div>'
+              + '<div style="font-size:11.5px;color:#8a97ac;margin-top:3px;word-break:break-all">'+esc(m.email)+'</div>',
+              'white-space:normal;min-width:180px;')
+        + admTd(status + sub)
         + admTd('<span style="color:#94a1b5">'+esc(added)+'</span>')
-        + admTd('<span style="color:#66738c">'+esc(m.addedBy||'—')+'</span>')
         + admTd('<span style="display:inline-flex;gap:7px;flex-wrap:wrap">'
-            + admActionBtn('招待メール再送','data-admin-resend-invite="'+esc(m.email)+'"','')
+            + (joined ? '' : admActionBtn('招待メール再送','data-admin-resend-invite="'+esc(m.email)+'"',''))
             + (isMe ? '' : admActionBtn('解除','data-admin-remove-member="'+esc(m.email)+'"','danger'))
             + '</span>')
         + '</tr>';
     }).join('');
-    body = admTable(['メールアドレス','追加日','追加者','操作'], rows);
+    body = admTable(['メンバー','ステータス','追加日','操作'], rows);
   }
-  var listCard = admCard('運営メンバー（'+(state.adminMembersLoaded?state.adminMembers.length:'…')+'人）','', body);
+  var nJoined = state.adminMembers.filter(function(m){ return !!m.joinedAt; }).length;
+  var nInvited = state.adminMembers.length - nJoined;
+  var summary = state.adminMembersLoaded && state.adminMembers.length
+    ? '<span style="font-size:12px;color:#66738c">登録済み <span style="font-weight:800;color:#1e9e63">'+nJoined+'</span>'
+      + ' ・ 招待済み <span style="font-weight:800;color:#c07a12">'+nInvited+'</span></span>'
+    : '';
+  var listCard = admCard('運営メンバー（'+(state.adminMembersLoaded?state.adminMembers.length:'…')+'人）', summary, body);
 
   var auto = !!INVITE_ENDPOINT;
   var mailNote = auto
@@ -3751,17 +3774,20 @@ function setupDelegation(){
     if(t.hasAttribute('data-admin-add-member')){
       var inp = document.getElementById('admin-add-email');
       var em = ((inp && inp.value) || state.adminNewEmail || '').trim().toLowerCase();
+      var inpN = document.getElementById('admin-add-name');
+      var nm = ((inpN && inpN.value) || state.adminNewName || '').trim();
+      if(!nm){ toast('お名前を入力してください'); return; }
       if(!em || em.indexOf('@')===-1 || em.indexOf('.')===-1){ toast('メールアドレスを正しく入力してください'); return; }
       if(state.adminMembers.some(function(m){ return (m.email||'').toLowerCase()===em; })){ toast('すでに登録されています'); return; }
       if(!(window.snDb && window.snDb.addAdmin)){ toast('Firebaseが未設定です'); return; }
       var by = (state.authUser && state.authUser.email) || '';
-      window.snDb.addAdmin(em, by);
+      window.snDb.addAdmin(em, nm, by);
       // 招待の記録を残す（Firestore。将来 Trigger Email 拡張を入れればここから送信される）
       if(window.snDb.sendAdminInvite) window.snDb.sendAdminInvite(em, by);
-      state.adminMembers = state.adminMembers.concat([{ email:em, allowed:true, addedAt:Date.now(), addedBy:by, invited:true }]);
-      state.adminNewEmail = '';
+      state.adminMembers = state.adminMembers.concat([{ email:em, name:nm, allowed:true, addedAt:Date.now(), addedBy:by }]);
+      state.adminNewEmail = ''; state.adminNewName = '';
       render();
-      sendInvite(em, by); // 自動送信 or 招待文ダイアログ
+      sendInvite(em, by, nm); // 自動送信 or 招待文ダイアログ
       return;
     }
     if(t.hasAttribute('data-admin-resend-invite')){
@@ -3769,8 +3795,7 @@ function setupDelegation(){
       var by2 = (state.authUser && state.authUser.email) || '';
       if(window.snDb && window.snDb.sendAdminInvite) window.snDb.sendAdminInvite(rem2, by2);
       var mm = state.adminMembers.filter(function(m){ return (m.email||'').toLowerCase()===rem2.toLowerCase(); })[0];
-      if(mm) mm.invited = true;
-      sendInvite(rem2, by2);
+      sendInvite(rem2, by2, mm && mm.name);
       return;
     }
     if(t.hasAttribute('data-invite-copy')){
@@ -3909,6 +3934,7 @@ function wire(){
   on('submit-answer','click', submitAnswer);
   on('reply-text','input', function(e){ state.replyText = e.target.value; });
   on('admin-add-email','input', function(e){ state.adminNewEmail = e.target.value; });
+  on('admin-add-name','input', function(e){ state.adminNewName = e.target.value; });
   on('reply-submit','click', submitReply);
 }
 function postValid(){ return !!(state.pcat && state.ptitle.trim() && state.pbody.trim()); }
@@ -4052,7 +4078,22 @@ render();
             if (window.snOnAdmins) window.snOnAdmins(arr);
           } catch (e) { if (window.snOnAdmins) window.snOnAdmins(null); }
         },
-        addAdmin: async (email, by) => { try { await setDoc(doc(db, "admins", email), { allowed: true, addedAt: Date.now(), addedBy: by || "" }); return true; } catch (e) { return false; } },
+        addAdmin: async (email, name, by) => { try { await setDoc(doc(db, "admins", email), { allowed: true, name: name || "", addedAt: Date.now(), addedBy: by || "" }); return true; } catch (e) { return false; } },
+        // 招待した人が初めてログインしたら「登録済み」にする。
+        // joinedAt は最初のログイン時だけ記録し、以降は上書きしない。
+        markAdminJoined: async (email, displayName) => {
+          try {
+            const ref = doc(db, "admins", email);
+            const ds = await getDoc(ref);
+            if (!ds.exists()) return;
+            const cur = ds.data() || {};
+            const patch = { lastLoginAt: Date.now() };
+            if (!cur.joinedAt) patch.joinedAt = Date.now();
+            // 名前が未登録なら、Googleアカウントの表示名で補う
+            if (!cur.name && displayName) patch.name = displayName;
+            await setDoc(ref, patch, { merge: true });
+          } catch (e) {}
+        },
         // 招待メールを送信キュー（mail コレクション）に積む。
         // Firebase 拡張「Trigger Email from Firestore」が実際の送信を担当する。
         sendAdminInvite: async (email, by) => {
@@ -4156,6 +4197,10 @@ render();
         if (user) { try { const ps = await getDoc(doc(db, "users", user.uid)); if (ps.exists()) profile = ps.data(); } catch (e) {} }
         const u = user ? { uid: user.uid, email: user.email, name: user.displayName || "", photo: user.photoURL || "" } : null;
         if (window.snOnAuthChange) window.snOnAuthChange(u, authorized, true, profile);
+        // 運営メンバーがログインしたら「登録済み」として記録する
+        if (user && authorized && user.email) {
+          try { await window.snDb.markAdminJoined(user.email, user.displayName || ""); } catch (e) {}
+        }
         // マイページ用の投稿履歴（本人のみ読める）
         if (user && window.snOnMyPosts) {
           try {
