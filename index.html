@@ -169,14 +169,17 @@
     justify-items:center;text-align:center;gap:0}
   .hc-pill{grid-area:pill;background:#14233f;color:#fff;font-size:11px;font-weight:800;letter-spacing:.1em;padding:6px 20px;border-radius:20px}
   .hc-title{grid-area:title;font-size:16px;font-weight:900;color:#2a2405;line-height:1.5;margin-top:14px}
-  .hc-ill{grid-area:ill;width:104px;margin:14px 0 4px}
+  /* イラストは白地に multiply で重ねる前提の素材なので、白いパネルを敷いて
+     isolation で合成範囲を閉じる（黄色のカードに直接置くと黄ばんで見えるため） */
+  .hc-illbox{grid-area:ill;width:112px;background:#fff;border-radius:14px;padding:7px;margin:14px 0 4px;isolation:isolate}
+  .hc-ill{width:100%}
   .hc-desc{grid-area:desc;font-size:12.5px;font-weight:700;color:#5c4f11;line-height:1.75;margin-top:8px}
   @media (max-width:900px){
     .howto-cards,.howto-cards.c3{grid-template-columns:1fr;gap:13px}
-    .howto-card{grid-template-columns:1fr 86px;grid-template-areas:"pill ill" "title ill" "desc ill";
+    .howto-card{grid-template-columns:1fr 92px;grid-template-areas:"pill ill" "title ill" "desc ill";
       justify-items:start;text-align:left;align-items:center;padding:16px 18px;column-gap:12px}
     .hc-title{font-size:14.5px;margin-top:9px}
-    .hc-ill{width:86px;margin:0;align-self:center}
+    .hc-illbox{width:92px;margin:0;align-self:center;padding:6px}
     .hc-desc{font-size:11.5px;margin-top:5px}
     .howto-banner{padding:14px 20px;margin-bottom:30px}
   }
@@ -2058,7 +2061,7 @@ function howtoHTML(){
       return '<div class="howto-card">'
         + '<span class="hc-pill">STEP ' + (i+1) + '</span>'
         + '<div class="hc-title">' + st[0] + '</div>'
-        + '<div class="hc-ill ill ' + st[1] + '"></div>'
+        + '<div class="hc-illbox"><div class="hc-ill ill ' + st[1] + '"></div></div>'
         + '<div class="hc-desc">' + st[2] + '</div>'
         + '</div>';
     }).join('');
@@ -2078,7 +2081,7 @@ function howtoHTML(){
   var studentCard = stepBand({
     band:'#2f73e8',
     eyebrow:'在校生の方（相談する）',
-    title:'相談を投稿するまで、かんたん',
+    title:'相談を投稿するまで、簡単',
     steps:[
       ['カテゴリを選ぶ','ill-girl-book','進路・勉強・部活など<br>相談内容に近いカテゴリを選択'],
       ['悩みを書く','ill-boy-laptop','タイトルと詳しい内容を<br>入力しましょう'],
@@ -2091,7 +2094,7 @@ function howtoHTML(){
   var senpaiCard = stepBand({
     band:'#1e9e63',
     eyebrow:'先輩の方（相談に回答する）',
-    title:'後輩にアドバイスを届けるまで、かんたん',
+    title:'後輩にアドバイスを届けるまで、簡単',
     steps:[
       ['相談一覧','ill-chat','カテゴリ・学年で絞り込んで<br>興味のある相談を探す'],
       ['気になる相談を開く','ill-girl-phone','詳しい状況を読んで<br>理解を深めましょう'],
