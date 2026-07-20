@@ -111,6 +111,15 @@ service cloud.firestore {
       allow create, read, update, delete: if isAdmin();
     }
 
+    // お問い合わせ：送信は誰でも／閲覧・対応・削除は運営のみ。
+    // 返信先メールを含むため公開読み取りは禁止。
+    match /contacts/{id} {
+      allow create: if request.resource.data.message is string
+                    && request.resource.data.message.size() > 0
+                    && request.resource.data.message.size() <= 4000;
+      allow read, update, delete: if isAdmin();
+    }
+
     // 公開設定（相談タグの一覧など）。表示に必要なので読み取りは全員、変更は運営のみ。
     match /config/{id} {
       allow read: if true;

@@ -418,6 +418,7 @@ var state = {
   editTarget: null, editTitle: '', editBody: '', editTags: [],
   adminNewTag: '', adminEditTag: null, adminEditTagText: '',
   adminQ: '', adminCatF: 'all', adminStatusF: 'all', adminSortF: 'new',
+  adminContacts: [], adminContactId: null, adminContactsLoaded: false,
   mpTags: null, mpEmail: '', mpNotify: true, mpProfileLoaded: false,
   adminMembers: [], adminMembersLoaded: false, adminMembersLoading: false, adminMembersError: false, adminNewEmail: '', adminNewName: '',
   // Firebase 認証（Googleログイン＋招待制の許可リスト）
@@ -3129,15 +3130,37 @@ function admActionBtn(txt, attr, kind){
   return '<span '+attr+' style="cursor:pointer;font-size:11.5px;font-weight:700;color:'+c+';background:'+bg+';padding:6px 12px;border-radius:8px;white-space:nowrap">'+txt+'</span>';
 }
 
+// 直近7日間の投稿数・回答数を実データから集計して折れ線にする
+function admDaily(){
+  var days = [], now = new Date();
+  for(var i=6; i>=0; i--){
+    var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+    days.push({ start: d.getTime(), end: d.getTime() + 86400000, label: (d.getMonth()+1)+'/'+d.getDate(), posts: 0, answers: 0 });
+  }
+  state.consultations.forEach(function(c){
+    var t = c.postedAt || c.createdAt || 0;
+    days.forEach(function(d){ if(t >= d.start && t < d.end) d.posts++; });
+    (c.answers||[]).forEach(function(an){
+      var at = an.createdAt || 0;
+      days.forEach(function(d){ if(at >= d.start && at < d.end) d.answers++; });
+    });
+  });
+  return days;
+}
 function admLineChart(){
-  var s1 = [210,280,300,222,258,320,272];
-  var s2 = [120,190,150,150,128,235,200];
-  var labels = ['5/12','5/13','5/14','5/15','5/16','5/17','5/18'];
+  var days = admDaily();
+  var s1 = days.map(function(d){ return d.posts; });
+  var s2 = days.map(function(d){ return d.answers; });
+  var labels = days.map(function(d){ return d.label; });
+  // 目盛りは実データの最大値に合わせる（0件でも軸がつぶれないよう最低4）
+  var peak = Math.max(4, Math.max.apply(null, s1.concat(s2)));
+  var step = Math.ceil(peak / 4);
+  var top = step * 4;
   var W=640,H=250,x0=54,x1=616,yTop=24,yBot=200;
-  function yv(v){ return yBot - (v/400)*(yBot-yTop); }
+  function yv(v){ return yBot - (v/top)*(yBot-yTop); }
   function xi(i){ return x0 + i*((x1-x0)/6); }
   var grid='';
-  [0,100,200,300,400].forEach(function(g){ var y=yv(g); grid += '<line x1="'+x0+'" y1="'+y+'" x2="'+x1+'" y2="'+y+'" stroke="#e8edf5"/><text x="'+(x0-10)+'" y="'+(y+4)+'" text-anchor="end" font-size="11" fill="#94a1b5">'+g+'</text>'; });
+  [0,1,2,3,4].forEach(function(k){ var g=step*k, y=yv(g); grid += '<line x1="'+x0+'" y1="'+y+'" x2="'+x1+'" y2="'+y+'" stroke="#e8edf5"/><text x="'+(x0-10)+'" y="'+(y+4)+'" text-anchor="end" font-size="11" fill="#94a1b5">'+g+'</text>'; });
   var xlab = labels.map(function(l,i){ return '<text x="'+xi(i)+'" y="'+(yBot+22)+'" text-anchor="middle" font-size="11" fill="#94a1b5">'+l+'</text>'; }).join('');
   function poly(arr,color){ var pts=arr.map(function(v,i){ return xi(i)+','+yv(v); }).join(' '); var dots=arr.map(function(v,i){ return '<circle cx="'+xi(i)+'" cy="'+yv(v)+'" r="3.5" fill="#fff" stroke="'+color+'" stroke-width="2"/>'; }).join(''); return '<polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+dots; }
   return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block">'+grid+xlab+poly(s2,'#22b07d')+poly(s1,'#2f73e8')+'</svg>';
@@ -3176,6 +3199,62 @@ function adminActivity(){
   ]);
   return admPageHead('アクティビティログ','運営操作やシステムの記録を確認できます。')
     + admCard('最近のアクティビティ','', items);
+}
+
+// お問い合わせの一覧と対応。相談管理と同じく、一覧と詳細を並べて表示する。
+function adminContactsPage(){
+  if(!state.adminContactsLoaded && window.snDb && window.snDb.loadContacts){
+    state.adminContactsLoaded = true; window.snDb.loadContacts();
+  }
+  var list = state.adminContacts;
+  var sel = null;
+  if(state.adminContactId) sel = findById(list, state.adminContactId);
+  if(!sel) sel = list.filter(function(c){ return c.status === 'pending'; })[0] || list[0] || null;
+
+  var rows = list.map(function(c){
+    var on = sel && c.id === sel.id;
+    var when = c.createdAt ? new Date(c.createdAt).toLocaleString('ja-JP', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+    return '<div data-admin-contact-view="'+c.id+'" class="row-hover" style="cursor:pointer;padding:13px 16px;border-bottom:1px solid #eef1f7;border-left:3px solid '+(on?'#2f73e8':'transparent')+';background:'+(on?'#f2f7fd':'#fff')+'">'
+      + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">'
+      + admBadge(c.type || 'その他','#5a6675','#eef1f7') + admStatusBadge(c.status) + '</div>'
+      + '<div style="font-size:13px;color:#1b2942;line-height:1.6'+(c.status==='resolved'?';opacity:.6':'')+'">'+esc((c.message||'').slice(0,48))+((c.message||'').length>48?'…':'')+'</div>'
+      + '<div style="font-size:11px;color:#94a1b5;margin-top:5px">'+esc(c.from||'')+' ・ '+esc(when)+'</div>'
+      + '</div>';
+  }).join('') || '<div style="padding:24px;text-align:center;color:#94a1b5;font-size:13px">お問い合わせはありません。</div>';
+
+  var pending = list.filter(function(c){ return c.status === 'pending'; }).length;
+  var extra = '<span style="font-size:12px;color:#66738c">未対応 <span style="font-weight:800;color:#c07a12">'+pending+'</span> 件</span>';
+  var listCard = admCard('お問い合わせ（'+list.length+'件）', extra, '<div style="max-height:640px;overflow-y:auto">'+rows+'</div>');
+
+  var preview;
+  if(!sel){
+    preview = admCard('詳細','', '<div style="padding:40px;text-align:center;color:#94a1b5;font-size:13px">左の一覧から選んでください。</div>');
+  } else {
+    var row = function(k, v){ return '<div style="display:flex;gap:14px;padding:11px 0;border-bottom:1px solid #eef1f7"><div style="width:96px;flex-shrink:0;font-size:12px;font-weight:700;color:#8a97ac">'+k+'</div><div style="flex:1;font-size:13px;color:#3a465f;line-height:1.7;word-break:break-all">'+v+'</div></div>'; };
+    var when2 = sel.createdAt ? new Date(sel.createdAt).toLocaleString('ja-JP') : '';
+    var reply = sel.email
+      ? '<a href="mailto:'+esc(sel.email)+'?subject='+encodeURIComponent('【SenpaiNet】お問い合わせへのご返信')+'" style="text-decoration:none;display:inline-block;background:#2f73e8;color:#fff;font-weight:700;font-size:12.5px;padding:9px 18px;border-radius:9px">メールで返信する</a>'
+      : '<span style="font-size:12px;color:#94a1b5">返信先メールの記入がないため返信できません</span>';
+    var inner = '<div style="padding:20px 22px">'
+      + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+admBadge(sel.type||'その他','#5a6675','#eef1f7')+admStatusBadge(sel.status)
+      + (sel.notified ? admBadge('運営へ通知済み','#1e9e63','#e7f5ee') : admBadge('通知の送信待ち','#c07a12','#fdf0dc'))+'</div>'
+      + '<div style="margin-top:14px">'
+      + row('送信者', esc(sel.from||'不明'))
+      + row('返信先', sel.email ? esc(sel.email) : '<span style="color:#94a1b5">なし</span>')
+      + row('日時', esc(when2))
+      + '</div>'
+      + '<div style="margin-top:16px"><div style="font-size:12px;font-weight:800;color:#8a97ac;margin-bottom:8px">お問い合わせ内容</div>'
+      + '<div style="border:1px solid #e7edf6;border-radius:12px;padding:16px 18px;background:#fbfcfe;font-size:13px;color:#3a465f;line-height:1.95;white-space:pre-wrap">'+esc(sel.message||'')+'</div></div>'
+      + '<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:18px;align-items:center">'
+      + reply
+      + (sel.status==='pending' ? admActionBtn('対応済みにする','data-admin-contact-resolve="'+sel.id+'"','primary') : '')
+      + admActionBtn('削除','data-admin-contact-del="'+sel.id+'"','danger')
+      + '</div></div>';
+    preview = admCard('詳細','', inner);
+  }
+
+  return admPageHead('お問い合わせ','利用者から届いたお問い合わせを確認・対応できます。運営メンバー全員にメールでも通知されます。')
+    + '<div class="admin-split">'+listCard+preview+'</div>';
 }
 
 // 相談タグの管理。ここで編集した内容が相談フォーム・先輩の登録フォーム・
@@ -3309,78 +3388,114 @@ function adminPlaceholder(title, desc){
 }
 
 function adminDashboard(){
-  var kpis = [
-    { label:'登録ユーザー数', val:'2,345', unit:'人', delta:'+128人', color:'#2f73e8', bg:'#e8f1fe', icon:admSvg(admP.person,22) },
-    { label:'回答済み相談数', val:'1,287', unit:'件', delta:'+86件', color:'#1e9e63', bg:'#e7f5ee', icon:admSvg(admP.chat,22) },
-    { label:'新規相談数', val:'892', unit:'件', delta:'+64件', color:'#e0568a', bg:'#fce8f1', icon:admSvg(admP.help,22) },
-    { label:'アクティブユーザー', val:'1,156', unit:'人', delta:'+97人', color:'#7c5cf0', bg:'#efeafe', icon:admSvg(admP.trend,22) }
-  ].map(function(k){
+  // すべて実際のデータから計算する
+  var cons = state.consultations;
+  var totalAnswers = cons.reduce(function(n,c){ return n + (c.answers||[]).length; }, 0);
+  var answered = cons.filter(function(c){ return (c.answers||[]).length > 0; }).length;
+  var unanswered = cons.length - answered;
+  var pendingReports = state.adminReports.filter(function(r){ return r.status === 'pending'; }).length;
+  var pendingContacts = state.adminContacts.filter(function(c){ return c.status === 'pending'; }).length;
+  var days = admDaily();
+  var week = days.reduce(function(n,d){ return n + d.posts; }, 0);
+  var weekAns = days.reduce(function(n,d){ return n + d.answers; }, 0);
+  var rate = cons.length ? Math.round(answered / cons.length * 100) : 0;
+
+  var kpiDefs = [
+    { label:'相談の総数', val:cons.length, unit:'件', sub:'今週 +'+week+'件', color:'#2f73e8', bg:'#e8f1fe', icon:admSvg(admP.chat,22) },
+    { label:'回答の総数', val:totalAnswers, unit:'件', sub:'今週 +'+weekAns+'件', color:'#1e9e63', bg:'#e7f5ee', icon:admSvg(admP.doc,22) },
+    { label:'未回答の相談', val:unanswered, unit:'件', sub:'回答率 '+rate+'%', color:'#e0568a', bg:'#fce8f1', icon:admSvg(admP.warn,22) },
+    { label:'未対応の通報', val:pendingReports, unit:'件', sub:'お問い合わせ '+pendingContacts+'件', color:'#d98324', bg:'#fdeddb', icon:admSvg(admP.flag,22) }
+  ];
+  var kpis = kpiDefs.map(function(k){
     return '<div style="background:#fff;border:1px solid #e5eaf2;border-top:3px solid '+k.color+';border-radius:14px;padding:18px 20px">'
       + '<div style="display:flex;align-items:flex-start;justify-content:space-between">'
       + '<div><div style="font-size:12.5px;color:#5a6675;font-weight:600">'+k.label+'</div>'
       + '<div style="margin-top:10px"><span style="font-size:30px;font-weight:900;color:#14233f">'+k.val+'</span><span style="font-size:14px;font-weight:800;color:#66738c;margin-left:2px">'+k.unit+'</span></div>'
-      + '<div style="font-size:11.5px;color:#94a1b5;margin-top:8px">先週比 <span style="color:#1e9e63;font-weight:700">'+k.delta+'</span></div></div>'
+      + '<div style="font-size:11.5px;color:#94a1b5;margin-top:8px">'+k.sub+'</div></div>'
       + '<span style="width:44px;height:44px;border-radius:12px;background:'+k.bg+';color:'+k.color+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+k.icon+'</span></div></div>';
   }).join('');
 
   var legend1 = '<div style="display:flex;gap:16px">'
-    + '<span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#5a6675"><span style="width:14px;height:3px;border-radius:2px;background:#2f73e8"></span>新規相談数</span>'
-    + '<span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#5a6675"><span style="width:14px;height:3px;border-radius:2px;background:#22b07d"></span>回答数</span></div>';
-  var lineCard = admCard('相談・回答の推移', '<span data-toast="期間の変更は準備中です" style="cursor:pointer;font-size:12px;color:#5a6675;background:#f4f7fc;border:1px solid #e3e9f2;border-radius:8px;padding:6px 12px">過去7日間 ⌄</span>',
+    + '<span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#5a6675"><span style="width:14px;height:3px;border-radius:2px;background:#2f73e8"></span>相談</span>'
+    + '<span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#5a6675"><span style="width:14px;height:3px;border-radius:2px;background:#22b07d"></span>回答</span></div>';
+  var lineCard = admCard('相談・回答の推移', '<span style="font-size:12px;color:#5a6675;background:#f4f7fc;border:1px solid #e3e9f2;border-radius:8px;padding:6px 12px">過去7日間</span>',
     '<div style="padding:14px 18px 14px">'+legend1+'<div style="margin-top:8px">'+admLineChart()+'</div></div>');
 
-  var dist = [
-    { label:'就活', pct:38, count:487, color:'#2f73e8' },
-    { label:'大学生活', pct:24, count:308, color:'#22b07d' },
-    { label:'勉強・学習', pct:16, count:205, color:'#8aa9f2' },
-    { label:'進路・キャリア', pct:12, count:154, color:'#7c5cf0' },
-    { label:'その他', pct:10, count:128, color:'#c7d0de' }
-  ];
-  var legend2 = dist.map(function(d){ return '<div style="display:flex;align-items:center;gap:8px;margin:8px 0"><span style="width:9px;height:9px;border-radius:50%;background:'+d.color+';flex-shrink:0"></span><span style="font-size:12px;color:#3a465f;flex:1">'+d.label+'</span><span style="font-size:11.5px;color:#94a1b5"><b style="color:#1b2942">'+d.pct+'%</b> ('+d.count+'件)</span></div>'; }).join('');
-  var donutCard = admCard('相談カテゴリ別割合', admActionBtn('詳細を見る','data-admin-tab="analytics"',''),
-    '<div style="display:flex;align-items:center;gap:14px;padding:12px 18px 16px;flex-wrap:wrap"><div style="flex-shrink:0">'+admDonut(dist)+'</div><div style="flex:1;min-width:150px">'+legend2+'</div></div>');
+  // カテゴリ別の割合も実データから
+  var counts = {};
+  cons.forEach(function(c){ counts[c.category] = (counts[c.category]||0) + 1; });
+  var palette = ['#2f73e8','#22b07d','#8aa9f2','#7c5cf0','#e0568a','#d98324','#0ea5a9','#c7d0de'];
+  var dist = Object.keys(counts).sort(function(x,y){ return counts[y]-counts[x]; }).map(function(k,i){
+    return { label:(cats[k]&&cats[k].label)||k, count:counts[k],
+             pct: cons.length ? Math.round(counts[k]/cons.length*100) : 0,
+             color: palette[i % palette.length] };
+  });
+  var legend2 = dist.length
+    ? dist.map(function(d){ return '<div style="display:flex;align-items:center;gap:8px;margin:8px 0"><span style="width:9px;height:9px;border-radius:50%;background:'+d.color+';flex-shrink:0"></span><span style="font-size:12px;color:#3a465f;flex:1">'+esc(d.label)+'</span><span style="font-size:11.5px;color:#94a1b5"><b style="color:#1b2942">'+d.pct+'%</b> ('+d.count+'件)</span></div>'; }).join('')
+    : '<div style="font-size:12.5px;color:#94a1b5;padding:12px 0">まだ相談がありません。</div>';
+  var donutCard = admCard('相談カテゴリ別割合', '',
+    '<div style="display:flex;align-items:center;gap:14px;padding:12px 18px 16px;flex-wrap:wrap">'
+    + (dist.length ? '<div style="flex-shrink:0">'+admDonut(dist)+'</div>' : '')
+    + '<div style="flex:1;min-width:150px">'+legend2+'</div></div>');
 
   var qa = [
-    ['お知らせを作成','news', admP.mega],
-    ['イベントを作成','events', admP.cal],
-    ['ユーザーを検索','users', admP.person],
-    ['相談を検索','consultations', admP.chat]
+    ['相談を管理する','consultations', admP.chat],
+    ['通報に対応する','reports', admP.flag],
+    ['お問い合わせを見る','contacts', admP.mail],
+    ['タグを編集する','tags', admP.tag]
   ].map(function(a){ return '<div data-admin-tab="'+a[1]+'" style="display:flex;align-items:center;gap:11px;padding:13px 15px;border:1px solid #e5eaf2;border-radius:11px;cursor:pointer;background:#fff;font-size:13px;font-weight:600;color:#3a465f"><span style="display:flex;color:#2f73e8">'+admSvg(a[2],18)+'</span>'+a[0]+'</div>'; }).join('');
   var qaCard = admCard('クイックアクション','', '<div style="display:flex;flex-direction:column;gap:10px;padding:14px 18px 16px">'+qa+'</div>');
 
   var charts = '<div class="admin2-charts">'+lineCard+donutCard+qaCard+'</div>';
 
-  var rc = { '就活':{c:'#2f73e8',bg:'#e8f1fe'}, '大学生活':{c:'#1e9e63',bg:'#e7f5ee'}, '勉強・学習':{c:'#5b6ef0',bg:'#ebedfe'}, '進路・キャリア':{c:'#7c5cf0',bg:'#efeafe'} };
-  var stt = { '未回答':{c:'#e0568a',bg:'#fce8f1'}, '回答募集中':{c:'#d98324',bg:'#fdeddb'}, '回答済み':{c:'#1e9e63',bg:'#e7f5ee'} };
-  var recent = [
-    ['就活','サマーインターン、何社応募しましたか？','14回生・早稲田大学','2時間前','未回答'],
-    ['大学生活','一人暮らしの家賃相場はどのくらい？','13回生・慶應義塾大学','5時間前','回答募集中'],
-    ['勉強・学習','おすすめのレポート作成ツールを教えてください！','12回生・京都大学','1日前','回答募集中'],
-    ['進路・キャリア','留学の準備はいつから始めるべき？','14回生・上智大学','1日前','未回答'],
-    ['就活','自己PRの添削をお願いしたいです','13回生・明治大学','2日前','回答済み']
-  ].map(function(r){ var cc=rc[r[0]]||{c:'#2f73e8',bg:'#e8f1fe'}; var ss=stt[r[4]]||{c:'#5a6675',bg:'#eef1f7'};
-    return '<div data-admin-tab="consultations" style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid #eef1f7;cursor:pointer">'
-      + '<span style="font-size:11px;font-weight:700;color:'+cc.c+';background:'+cc.bg+';padding:4px 8px;border-radius:8px;white-space:nowrap;flex-shrink:0;width:78px;text-align:center">'+r[0]+'</span>'
-      + '<div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:700;color:#1b2942;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r[1])+'</div><div style="font-size:11.5px;color:#94a1b5;margin-top:3px">'+esc(r[2])+'</div></div>'
-      + '<span style="font-size:11.5px;color:#94a1b5;white-space:nowrap" class="rs-hide-sm">'+r[3]+'</span>'
-      + '<span style="font-size:11px;font-weight:700;color:'+ss.c+';background:'+ss.bg+';padding:4px 11px;border-radius:8px;white-space:nowrap">'+r[4]+'</span></div>';
-  }).join('');
-  var recentCard = admCard('最近の相談（要対応） <span style="font-size:11px;color:#e0568a;font-weight:700;margin-left:4px">5件</span>','', recent
+  // 直近の相談も実データ（新しい順に5件）
+  var recent = cons.slice(0, 5).map(function(c){
+    var m = cats[c.category] || { label:'その他', color:'#2f73e8', bg:'#e8f1fe' };
+    var n = (c.answers||[]).length;
+    var st = c.hidden ? { t:'非表示', c:'#5a6675', bg:'#eaeef4' }
+           : n ? { t:'回答済み', c:'#1e9e63', bg:'#e7f5ee' }
+               : { t:'未回答', c:'#e0568a', bg:'#fce8f1' };
+    return '<div data-admin-view="'+c.id+'" style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid #eef1f7;cursor:pointer">'
+      + '<span style="font-size:11px;font-weight:700;color:'+m.color+';background:'+m.bg+';padding:4px 8px;border-radius:8px;white-space:nowrap;flex-shrink:0;width:78px;text-align:center">'+esc(m.label)+'</span>'
+      + '<div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:700;color:#1b2942;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.title)+'</div>'
+      + '<div style="font-size:11.5px;color:#94a1b5;margin-top:3px">'+(GRADE_LABELS[c.grade]||'-')+' ・ 回答 '+n+'件</div></div>'
+      + '<span style="font-size:11.5px;color:#94a1b5;white-space:nowrap" class="rs-hide-sm">'+esc(c.time||'')+'</span>'
+      + '<span style="font-size:11px;font-weight:700;color:'+st.c+';background:'+st.bg+';padding:4px 11px;border-radius:8px;white-space:nowrap">'+st.t+'</span></div>';
+  }).join('') || '<div style="padding:26px;text-align:center;color:#94a1b5;font-size:13px">まだ相談がありません。</div>';
+
+  var recentCard = admCard('最近の相談 <span style="font-size:11px;color:#94a1b5;font-weight:700;margin-left:4px">新しい順</span>','', recent
     + '<div data-admin-tab="consultations" style="text-align:center;padding:14px;font-size:12.5px;font-weight:700;color:#2f73e8;cursor:pointer">すべての相談を確認する ›</div>');
 
-  var alerts = [
-    [admP.warn,'#d98324','#fdeddb','通報された投稿があります','新しい通報が3件あります','10分前','reports'],
-    [admP.userplus,'#2f73e8','#e8f1fe','新規登録ユーザー','新しく23人のユーザーが登録しました','1時間前','users'],
-    [admP.help,'#7c5cf0','#efeafe','未回答の相談が増えています','24時間以上未回答の相談が12件あります','3時間前','consultations']
-  ].map(function(a){ return '<div data-admin-tab="'+a[6]+'" style="display:flex;gap:12px;padding:14px 18px;border-bottom:1px solid #eef1f7;cursor:pointer">'
-      + '<span style="width:34px;height:34px;border-radius:10px;background:'+a[2]+';color:'+a[1]+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+admSvg(a[0],17)+'</span>'
-      + '<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700;color:#1b2942">'+a[3]+'</div><div style="font-size:11.5px;color:#94a1b5;margin-top:2px">'+a[4]+'</div></div>'
-      + '<span style="font-size:11px;color:#bcc6d6;white-space:nowrap">'+a[5]+'</span></div>'; }).join('');
-  var alertCard = admCard('通知・アラート <span style="font-size:11px;color:#fff;background:#e0568a;border-radius:9px;padding:1px 8px;font-weight:800;margin-left:4px">3</span>','', alerts);
+  // 実際の状況から「対応が必要なこと」を組み立てる
+  var alertDefs = [];
+  if(pendingReports) alertDefs.push([admP.flag,'#d98324','#fdeddb','未対応の通報があります', pendingReports+'件の通報が未対応です','reports']);
+  if(pendingContacts) alertDefs.push([admP.mail,'#2f73e8','#e8f1fe','未対応のお問い合わせがあります', pendingContacts+'件のお問い合わせが届いています','contacts']);
+  if(unanswered) alertDefs.push([admP.help,'#7c5cf0','#efeafe','未回答の相談があります', unanswered+'件の相談に回答がついていません','consultations']);
+  var hidden = cons.filter(function(c){ return c.hidden; }).length;
+  if(hidden) alertDefs.push([admP.warn,'#5a6675','#eaeef4','非表示中の相談があります', hidden+'件を非表示にしています','consultations']);
+  var alerts = alertDefs.length
+    ? alertDefs.map(function(a){ return '<div data-admin-tab="'+a[5]+'" style="display:flex;gap:12px;padding:14px 18px;border-bottom:1px solid #eef1f7;cursor:pointer">'
+        + '<span style="width:34px;height:34px;border-radius:10px;background:'+a[2]+';color:'+a[1]+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+admSvg(a[0],17)+'</span>'
+        + '<div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700;color:#1b2942">'+a[3]+'</div><div style="font-size:11.5px;color:#94a1b5;margin-top:2px">'+a[4]+'</div></div>'
+        + '<span style="font-size:16px;color:#bcc6d6;white-space:nowrap">›</span></div>'; }).join('')
+    : '<div style="padding:26px;text-align:center;color:#94a1b5;font-size:13px">対応が必要なものはありません。</div>';
+  var alertCount = alertDefs.length
+    ? '<span style="font-size:11px;color:#fff;background:#e0568a;border-radius:9px;padding:1px 8px;font-weight:800;margin-left:4px">'+alertDefs.length+'</span>' : '';
+  var alertCard = admCard('対応が必要なこと '+alertCount,'', alerts);
 
-  var sys = [ ['サーバー稼働時間','99.9%',99.9,'#1e9e63'], ['データベース使用率','45%',45,'#2f73e8'], ['ストレージ使用率','32%',32,'#7c5cf0'] ]
-    .map(function(v){ return '<div style="padding:13px 18px;border-bottom:1px solid #eef1f7"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:7px"><span style="color:#3a465f">'+v[0]+'</span><span style="font-weight:800;color:#1b2942">'+v[1]+'</span></div><div style="height:6px;background:#eef2f8;border-radius:4px;overflow:hidden"><div style="width:'+v[2]+'%;height:100%;background:'+v[3]+'"></div></div></div>'; }).join('');
-  var sysCard = admCard('システム情報','', sys);
+  // 運営まわりの実データ
+  var sysRows = [
+    ['相談タグ', HASHTAGS.length + '種類'],
+    ['運営メンバー', (state.adminMembersLoaded ? state.adminMembers.length + '人' : '読み込み中…')],
+    ['公開中の相談', (cons.length - hidden) + '件'],
+    ['回答がついた相談', answered + '件（回答率 ' + rate + '%）']
+  ];
+  var sys = sysRows.map(function(v){
+    return '<div style="display:flex;justify-content:space-between;gap:12px;padding:13px 18px;border-bottom:1px solid #eef1f7;font-size:12.5px">'
+      + '<span style="color:#3a465f">'+v[0]+'</span><span style="font-weight:800;color:#1b2942">'+v[1]+'</span></div>';
+  }).join('');
+
+  var sysCard = admCard('サイトの状況','', sys);
 
   var lower = '<div class="admin2-lower"><div>'+recentCard+'</div><div style="display:flex;flex-direction:column;gap:18px">'+alertCard+sysCard+'</div></div>';
 
@@ -3784,6 +3899,7 @@ function adminHTML(){
       ['analytics','相談データ分析',admIcons.pie],
       ['activity','アクティビティログ',admIcons.history] ] },
     { label:'システム', items:[
+      ['contacts','お問い合わせ',admIcons.mail],
       ['tags','タグ管理',admIcons.tag],
       ['members','運営メンバー',admIcons.people],
       ['settings','設定',admIcons.gear],
@@ -3811,6 +3927,7 @@ function adminHTML(){
     case 'activity': content = adminActivity(); break;
     case 'members': content = adminMembersPage(); break;
     case 'tags': content = adminTagsPage(); break;
+    case 'contacts': content = adminContactsPage(); break;
     case 'posts': content = adminPlaceholder('投稿・コメント管理','コミュニティ投稿やコメントの管理機能を準備中です。'); break;
     case 'events': content = adminPlaceholder('イベント管理','イベントの作成・管理機能を準備中です。'); break;
     case 'report': content = adminPlaceholder('利用状況レポート','利用状況のレポート出力を準備中です。'); break;
@@ -4078,7 +4195,7 @@ function on(sel,evt,fn){ var n=document.getElementById(sel); if(n) n.addEventLis
 // handlers across re-renders, which would fire toggles multiple times.
 function setupDelegation(){
   document.body.addEventListener('click', function(e){
-    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-mp-tag],[data-mp-notify],[data-mp-notify-save],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-open-cons],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-admin-add-member],[data-admin-remove-member],[data-admin-resend-invite],[data-invite-copy],[data-admin-cons-reset],[data-admin-del-cons],[data-admin-del-cons-confirm],[data-admin-tag-add],[data-admin-tag-edit],[data-admin-tag-cancel],[data-admin-tag-save],[data-admin-tag-up],[data-admin-tag-del],[data-admin-tag-del-confirm],[data-edit-open],[data-edit-tag],[data-edit-save],[data-del-open],[data-del-confirm],[data-report-open],[data-report-reason],[data-report-submit],[data-admin-remove-confirm],[data-report-confirm],[data-report-warn],[data-report-suspend],[data-report-delete],[data-report-dismiss],[data-menu]');
+    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-mp-tag],[data-mp-notify],[data-mp-notify-save],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-open-cons],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-admin-add-member],[data-admin-remove-member],[data-admin-resend-invite],[data-invite-copy],[data-admin-contact-view],[data-admin-contact-resolve],[data-admin-contact-del],[data-admin-cons-reset],[data-admin-del-cons],[data-admin-del-cons-confirm],[data-admin-tag-add],[data-admin-tag-edit],[data-admin-tag-cancel],[data-admin-tag-save],[data-admin-tag-up],[data-admin-tag-del],[data-admin-tag-del-confirm],[data-edit-open],[data-edit-tag],[data-edit-save],[data-del-open],[data-del-confirm],[data-report-open],[data-report-reason],[data-report-submit],[data-admin-remove-confirm],[data-report-confirm],[data-report-warn],[data-report-suspend],[data-report-delete],[data-report-dismiss],[data-menu]');
     if(!t) return;
     if(t.hasAttribute('data-like') || t.hasAttribute('data-bookmark') || t.hasAttribute('data-helpful')) e.stopPropagation();
 
@@ -4254,6 +4371,24 @@ function setupDelegation(){
       if(state.adminSelectedId === acid) state.adminSelectedId = null;
       if(window.snDb && window.snDb.deleteConsultation) window.snDb.deleteConsultation(acid);
       closeModal(); render(); toast('「'+atitle+'」を削除しました');
+      return;
+    }
+    // ---- お問い合わせ ----
+    if(t.hasAttribute('data-admin-contact-view')){ state.adminContactId = t.getAttribute('data-admin-contact-view'); render(); return; }
+    if(t.hasAttribute('data-admin-contact-resolve')){
+      var crid = t.getAttribute('data-admin-contact-resolve');
+      var cr = findById(state.adminContacts, crid);
+      if(cr){ cr.status = 'resolved'; state.adminContactId = crid;
+        if(window.snDb && window.snDb.updateContact) window.snDb.updateContact(crid, {status:'resolved'});
+        render(); toast('対応済みにしました'); }
+      return;
+    }
+    if(t.hasAttribute('data-admin-contact-del')){
+      var cdid = t.getAttribute('data-admin-contact-del');
+      state.adminContacts = state.adminContacts.filter(function(c){ return c.id !== cdid; });
+      if(state.adminContactId === cdid) state.adminContactId = null;
+      if(window.snDb && window.snDb.deleteContact) window.snDb.deleteContact(cdid);
+      render(); toast('お問い合わせを削除しました');
       return;
     }
     // ---- タグ管理 ----
@@ -4523,8 +4658,26 @@ function wire(){
   on('sp-send','click', function(){
     var msg = document.getElementById('sp-msg');
     if(!msg || !msg.value.trim()){ toast('お問い合わせ内容をご入力ください'); if(msg) msg.focus(); return; }
-    document.getElementById('sp-msg').value = '';
-    var em = document.getElementById('sp-email'); if(em) em.value = '';
+    var em = document.getElementById('sp-email');
+    var ty = document.getElementById('sp-type');
+    var mail = (em && em.value || '').trim();
+    if(mail && (mail.indexOf('@') === -1 || mail.indexOf('.') === -1)){ toast('メールアドレスの形式をご確認ください'); em.focus(); return; }
+    var c = {
+      id: 'ct_' + Date.now(),
+      type: (ty && ty.value) || 'その他',
+      email: mail,
+      message: msg.value.trim().slice(0, 4000),
+      // 誰からかは分かるようにするが、相談本体と同じく本人特定はしない
+      from: state.loggedIn ? (state.userName || 'ログイン利用者') : '未ログインの利用者',
+      status: 'pending',
+      createdAt: Date.now(),
+      // 通知メールの送信待ちであることを示す（Apps Script が拾って運営に送る）
+      notified: false
+    };
+    state.adminContacts = [c].concat(state.adminContacts);
+    if(window.snDb && window.snDb.addContact) window.snDb.addContact(c);
+    msg.value = '';
+    if(em) em.value = '';
     toast('お問い合わせを送信しました。ありがとうございます。');
   });
   function resetPost(){ state.pstep=1; state.pcat=''; state.ptitle=''; state.pbody=''; state.pContext=''; state.pMoreOpen=false; }
@@ -4585,6 +4738,14 @@ window.snOnAdmins = function(list){
   state.adminMembers = Array.isArray(list) ? list : [];
   state.adminMembersLoaded = true; state.adminMembersLoading = false;
   if(!Array.isArray(list)) state.adminMembersError = true;
+  render();
+};
+// Firestore からお問い合わせ一覧を受け取る。送信直後のローカル分は残す。
+window.snOnContacts = function(list){
+  if(!Array.isArray(list)) return;
+  var ids = {}; list.forEach(function(c){ ids[c.id] = true; });
+  var keep = state.adminContacts.filter(function(c){ return !ids[c.id]; });
+  state.adminContacts = list.concat(keep);
   render();
 };
 // Firestore から通報一覧を受け取る。ローカルにしかない分（送信直後・サンプル）は残す。
@@ -4782,6 +4943,19 @@ render();
         },
         // ログインユーザーのプロフィール（本人のみ読み書き可）
         saveUserProfile: async (uid, p) => { try { await setDoc(doc(db, "users", uid), p, { merge: true }); } catch (e) {} },
+        // お問い合わせ（送信は誰でも／閲覧・対応は運営のみ＝ルールで保護）
+        // notified:false のまま保存し、Apps Script が拾って運営メンバー全員へ通知する
+        addContact: async (c) => { try { await setDoc(doc(db, "contacts", c.id), c); } catch (e) {} },
+        loadContacts: async () => {
+          try {
+            const snap = await getDocs(collection(db, "contacts"));
+            const arr = []; snap.forEach((ds) => { const o = ds.data() || {}; o.id = ds.id; arr.push(o); });
+            arr.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            if (window.snOnContacts) window.snOnContacts(arr);
+          } catch (e) {}
+        },
+        updateContact: async (id, patch) => { try { await setDoc(doc(db, "contacts", id), patch, { merge: true }); } catch (e) {} },
+        deleteContact: async (id) => { try { await deleteDoc(doc(db, "contacts", id)); } catch (e) {} },
         // 利用者からの通報を保存する（作成は誰でも可／閲覧は運営のみ＝ルールで保護）
         addReport: async (r) => { try { await setDoc(doc(db, "reports", r.id), r); } catch (e) {} },
         // 運営が通報一覧を読み込む

@@ -56,6 +56,8 @@ var MAX_RECIPIENTS = 30;
 
 function processNotifyQueue() {
   var token = getAccessToken();
+  // お問い合わせの通知も同じトリガーでまとめて処理する（トリガー追加は不要）
+  try { processContactQueue(token); } catch (e) { Logger.log("お問い合わせ通知でエラー: " + e); }
 
   // 未送信の通知を取り出す
   var queue = runQuery(token, {
@@ -120,6 +122,158 @@ function processNotifyQueue() {
   });
 }
 
+/**
+ * お問い合わせが届いたら、運営メンバー全員にメールで知らせる。
+ * processNotifyQueue の最後から呼ばれるので、トリガーの追加設定は不要。
+ */
+function processContactQueue(token) {
+  token = token || getAccessToken();
+
+  // まだ通知していないお問い合わせを取り出す
+  var pending = runQuery(token, {
+    from: [{ collectionId: 'contacts' }],
+    where: {
+      fieldFilter: {
+        field: { fieldPath: 'notified' },
+        op: 'EQUAL',
+        value: { booleanValue: false }
+      }
+    },
+    limit: MAX_QUEUE_PER_RUN
+  });
+
+  if (!pending.length) {
+    Logger.log('未通知のお問い合わせはありません');
+    return;
+  }
+
+  var admins = listAdminEmails(token);
+  if (!admins.length) {
+    Logger.log('※ 運営メンバーが登録されていないため通知できません');
+    return;
+  }
+  Logger.log('未通知のお問い合わせ ' + pending.length + '件 / 運営メンバー ' + admins.length + '人');
+
+  pending.forEach(function (item) {
+    var c = item.fields;
+    var sent = 0;
+    admins.forEach(function (email) {
+      if (!underDailyLimit()) return;
+      try {
+        MailApp.sendEmail({
+          to: email,
+          subject: '【SenpaiNet】お問い合わせが届きました（' + (toStr(c.type) || 'その他') + '）',
+          body: contactPlain(c),
+          htmlBody: contactHtml(c),
+          name: 'SenpaiNet 運営通知',
+          replyTo: toStr(c.email) || undefined   // 返信先があればそのまま返信できる
+        });
+        sent++;
+      } catch (e) {
+        Logger.log('送信失敗 ' + maskEmail(email) + ': ' + e);
+      }
+    });
+
+    patchDoc(token, item.name, {
+      notified: { booleanValue: true },
+      notifiedAt: { integerValue: String(Date.now()) }
+    }, ['notified', 'notifiedAt']);
+
+    Logger.log('お問い合わせ1件 → 運営 ' + sent + '人に通知');
+  });
+}
+
+// 運営メンバーのメールアドレス一覧（admins コレクションのドキュメントIDがメール）
+function listAdminEmails(token) {
+  var out = [], pageToken = '';
+  do {
+    var url = baseUrl() + '/admins?pageSize=300' + (pageToken ? '&pageToken=' + pageToken : '');
+    var res = UrlFetchApp.fetch(url, { headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true });
+    if (res.getResponseCode() !== 200) throw new Error('運営メンバーの取得に失敗: ' + res.getContentText());
+    var data = JSON.parse(res.getContentText());
+    (data.documents || []).forEach(function (d) {
+      var email = d.name.split('/').pop();
+      var f = d.fields || {};
+      // allowed が明示的に false のものは除く
+      if (f.allowed && f.allowed.booleanValue === false) return;
+      if (email.indexOf('@') !== -1) out.push(email);
+    });
+    pageToken = data.nextPageToken || '';
+  } while (pageToken);
+  return out;
+}
+
+function contactPlain(c) {
+  return 'SenpaiNet にお問い合わせが届きました。\n\n' +
+    '種別　：' + (toStr(c.type) || 'その他') + '\n' +
+    '送信者：' + (toStr(c.from) || '不明') + '\n' +
+    '返信先：' + (toStr(c.email) || '（記入なし）') + '\n\n' +
+    '--- お問い合わせ内容 ---\n' +
+    toStr(c.message) + '\n' +
+    '----------------------\n\n' +
+    '▼ 管理コンソールで確認する\n' + CONSOLE_URL + '\n\n' +
+    (toStr(c.email) ? 'このメールにそのまま返信すると、送信者に届きます。\n' : '') +
+    'SenpaiNet';
+}
+
+function contactHtml(c) {
+  var BLUE = '#2f73e8', INK = '#14233f', MUTED = '#66738c';
+  var row = function (k, v) {
+    return '<tr><td style="padding:6px 14px 6px 0;font:700 12px/1.7 Helvetica,Arial,sans-serif;color:#8a97ac;white-space:nowrap;vertical-align:top">' + k + '</td>' +
+      '<td style="padding:6px 0;font:400 13px/1.7 Helvetica,Arial,sans-serif;color:' + INK + ';word-break:break-all">' + v + '</td></tr>';
+  };
+  return '<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<meta name="color-scheme" content="light only"></head>' +
+    '<body style="margin:0;padding:0;background:#f4f7fb">' +
+    '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f4f7fb">' +
+    '<tr><td align="center" style="padding:32px 16px">' +
+    '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" ' +
+      'style="width:600px;max-width:100%;background:#fff;border-radius:16px;overflow:hidden">' +
+
+    '<tr><td style="background:' + BLUE + ';height:5px;font-size:0;line-height:0">&nbsp;</td></tr>' +
+
+    '<tr><td style="padding:28px 32px 0">' +
+      '<div style="font:700 11px/1 Helvetica,Arial,sans-serif;color:' + BLUE + ';letter-spacing:.14em">CONTACT</div>' +
+      '<h1 style="margin:10px 0 0;font:700 19px/1.5 Helvetica,Arial,sans-serif;color:' + INK + '">お問い合わせが届きました</h1>' +
+    '</td></tr>' +
+
+    '<tr><td style="padding:16px 32px 0">' +
+      '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">' +
+        row('種別', escapeHtml(toStr(c.type) || 'その他')) +
+        row('送信者', escapeHtml(toStr(c.from) || '不明')) +
+        row('返信先', toStr(c.email) ? escapeHtml(toStr(c.email)) : '<span style="color:#94a1b5">記入なし</span>') +
+      '</table>' +
+    '</td></tr>' +
+
+    '<tr><td style="padding:18px 32px 0">' +
+      '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" ' +
+        'style="background:#f7f9fc;border:1px solid #e7edf6;border-radius:12px">' +
+        '<tr><td style="padding:18px 20px;font:400 13px/1.95 Helvetica,Arial,sans-serif;color:#3a465f;white-space:pre-wrap">' +
+          escapeHtml(toStr(c.message)) + '</td></tr>' +
+      '</table>' +
+    '</td></tr>' +
+
+    '<tr><td align="center" style="padding:24px 32px 0">' +
+      '<table role="presentation" cellpadding="0" cellspacing="0" border="0">' +
+        '<tr><td align="center" style="background:' + BLUE + ';border-radius:10px">' +
+          '<a href="' + CONSOLE_URL + '" style="display:inline-block;padding:13px 30px;' +
+            'font:700 14px/1 Helvetica,Arial,sans-serif;color:#fff;text-decoration:none;border-radius:10px">' +
+            '管理コンソールで確認する</a>' +
+        '</td></tr>' +
+      '</table>' +
+    '</td></tr>' +
+
+    '<tr><td style="padding:24px 32px 30px">' +
+      '<div style="height:1px;background:#eef1f7;font-size:0;line-height:0;margin-bottom:16px">&nbsp;</div>' +
+      '<div style="font:400 11.5px/1.8 Helvetica,Arial,sans-serif;color:#a8b3c4">' +
+        (toStr(c.email) ? 'このメールにそのまま返信すると、送信者に届きます。<br>' : '') +
+        'SenpaiNet 運営通知</div>' +
+    '</td></tr>' +
+
+    '</table></td></tr></table></body></html>';
+}
+
 // 設定が正しいか確かめる（トリガー設定前に手動で実行する）
 function testConnection() {
   var token = getAccessToken();
@@ -139,6 +293,10 @@ function testConnection() {
     Logger.log('  例) ' + maskEmail(p.email) + ' / タグ: ' + p.tags.join('、'));
   });
   if (!senpai.length) Logger.log('※ 先輩がまだ登録されていません。サイトで先輩登録を試してください。');
+  var admins = listAdminEmails(token);
+  Logger.log('運営メンバー: ' + admins.length + '人');
+  var ct = runQuery(token, { from: [{ collectionId: 'contacts' }], where: { fieldFilter: { field: { fieldPath: 'notified' }, op: 'EQUAL', value: { booleanValue: false } } } });
+  Logger.log('未通知のお問い合わせ: ' + ct.length + '件');
 }
 
 // ═══════════════ メール本文 ═══════════════
