@@ -813,6 +813,23 @@ function sendInvite(email, by, name){
   openModal(inviteMailModal(email, by, name), 560);
 }
 
+// 運営による相談削除の確認ダイアログ
+function adminDeleteConsultationModal(id){
+  var c = find(id); if(!c) return '';
+  var n = c.answers ? c.answers.length : 0;
+  return '<div style="padding:30px 28px 26px">'
+    + '<h2 style="font-size:18px;font-weight:900;color:#14233f;margin:0 0 10px">この相談を削除しますか？</h2>'
+    + '<p style="font-size:13px;color:#5a6678;line-height:1.9;margin:0 0 16px">公開ページから消え、元に戻すことはできません。'
+    + (n ? '<strong>届いている'+n+'件の回答も見られなくなります。</strong>' : '')
+    + '<br>投稿者に知らせずに見えなくするだけなら、先に「非表示にする」を検討してください。</p>'
+    + '<div style="background:#f7f9fc;border:1px solid #e7edf6;border-radius:11px;padding:13px 15px">'
+    + '<div style="font-size:11px;font-weight:700;color:#8a97ac;margin-bottom:5px">対象</div>'
+    + '<div style="font-size:13px;font-weight:700;color:#1b2942;line-height:1.6">'+esc(c.title)+'</div></div>'
+    + '<div style="display:flex;gap:12px;justify-content:flex-end;margin-top:22px">'
+    + '<button data-modal-close-btn style="cursor:pointer;background:#fff;border:1.5px solid #d4dde9;color:#3a465f;font-weight:700;font-size:13.5px;padding:11px 22px;border-radius:10px">キャンセル</button>'
+    + '<button data-admin-del-cons-confirm="'+esc(id)+'" style="cursor:pointer;border:none;background:#c0392b;color:#fff;font-weight:700;font-size:13.5px;padding:11px 24px;border-radius:10px">削除する</button>'
+    + '</div></div>';
+}
 // タグ削除の確認ダイアログ
 function adminTagDeleteModal(tag){
   return '<div style="padding:30px 28px 26px">'
@@ -3378,6 +3395,7 @@ function adminConsultations(){
     var actions = '<div style="display:flex;gap:9px;flex-wrap:wrap">'
       + admActionBtn(sel.hidden?'再表示する':'非表示にする','data-admin-hide="'+sel.id+'"', sel.hidden?'primary':'danger')
       + admActionBtn('公開ページで開く','data-open="'+sel.id+'"','')
+      + admActionBtn('削除する','data-admin-del-cons="'+sel.id+'"','danger')
       + '</div>';
 
     var inner = '<div style="padding:20px 22px">'
@@ -3946,7 +3964,7 @@ function on(sel,evt,fn){ var n=document.getElementById(sel); if(n) n.addEventLis
 // handlers across re-renders, which would fire toggles multiple times.
 function setupDelegation(){
   document.body.addEventListener('click', function(e){
-    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-mp-tag],[data-mp-notify],[data-mp-notify-save],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-open-cons],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-admin-add-member],[data-admin-remove-member],[data-admin-resend-invite],[data-invite-copy],[data-admin-tag-add],[data-admin-tag-edit],[data-admin-tag-cancel],[data-admin-tag-save],[data-admin-tag-up],[data-admin-tag-del],[data-admin-tag-del-confirm],[data-edit-open],[data-edit-tag],[data-edit-save],[data-del-open],[data-del-confirm],[data-report-open],[data-report-reason],[data-report-submit],[data-admin-remove-confirm],[data-report-confirm],[data-report-warn],[data-report-suspend],[data-report-delete],[data-report-dismiss],[data-menu]');
+    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-mp-tag],[data-mp-notify],[data-mp-notify-save],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-open-cons],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-admin-add-member],[data-admin-remove-member],[data-admin-resend-invite],[data-invite-copy],[data-admin-del-cons],[data-admin-del-cons-confirm],[data-admin-tag-add],[data-admin-tag-edit],[data-admin-tag-cancel],[data-admin-tag-save],[data-admin-tag-up],[data-admin-tag-del],[data-admin-tag-del-confirm],[data-edit-open],[data-edit-tag],[data-edit-save],[data-del-open],[data-del-confirm],[data-report-open],[data-report-reason],[data-report-submit],[data-admin-remove-confirm],[data-report-confirm],[data-report-warn],[data-report-suspend],[data-report-delete],[data-report-dismiss],[data-menu]');
     if(!t) return;
     if(t.hasAttribute('data-like') || t.hasAttribute('data-bookmark') || t.hasAttribute('data-helpful')) e.stopPropagation();
 
@@ -4104,6 +4122,20 @@ function setupDelegation(){
       if(window.snDb && window.snDb.sendAdminInvite) window.snDb.sendAdminInvite(rem2, by2);
       var mm = state.adminMembers.filter(function(m){ return (m.email||'').toLowerCase()===rem2.toLowerCase(); })[0];
       sendInvite(rem2, by2, mm && mm.name);
+      return;
+    }
+    // ---- 運営による相談の削除 ----
+    if(t.hasAttribute('data-admin-del-cons')){
+      return openModal(adminDeleteConsultationModal(t.getAttribute('data-admin-del-cons')), 460);
+    }
+    if(t.hasAttribute('data-admin-del-cons-confirm')){
+      var acid = t.getAttribute('data-admin-del-cons-confirm');
+      var act = find(acid); var atitle = act ? act.title : '';
+      state.consultations = state.consultations.filter(function(c){ return c.id !== acid; });
+      state.myPosts = state.myPosts.filter(function(p){ return p.cid !== acid; });
+      if(state.adminSelectedId === acid) state.adminSelectedId = null;
+      if(window.snDb && window.snDb.deleteConsultation) window.snDb.deleteConsultation(acid);
+      closeModal(); render(); toast('「'+atitle+'」を削除しました');
       return;
     }
     // ---- タグ管理 ----
@@ -4454,6 +4486,9 @@ window.snAuthError = function(msg){ toast('ログインに失敗しました'); 
 // Firestore から相談一覧を受け取って差し替え（起動直後に一度）
 window.snOnConsultations = function(list){
   if(!list || !list.length) return;
+  // Firestore はドキュメントID順で返すので、投稿の新しい順に並べ替える
+  // （これがないと新しい投稿が一覧の末尾に埋もれて見つけにくい）
+  list.sort(function(a, b){ return (b.postedAt || b.createdAt || 0) - (a.postedAt || a.createdAt || 0); });
   state.consultations = list;
   render();
 };
