@@ -357,6 +357,7 @@ var state = {
   // ---- 運営（管理者）コンソール ----
   adminTab: 'dashboard', adminSelectedId: null, adminReportId: null,
   reportTarget: null, reportReason: '', reportNote: '', adminReportsLoaded: false,
+  adminNewTag: '', adminEditTag: null, adminEditTagText: '',
   adminMembers: [], adminMembersLoaded: false, adminMembersLoading: false, adminMembersError: false, adminNewEmail: '', adminNewName: '',
   // Firebase 認証（Googleログイン＋招待制の許可リスト）
   authReady: false, authConfigured: false, authUser: null, adminAuthorized: false,
@@ -719,7 +720,13 @@ function addUserConsultation(){
   // （実際のメール送信はサーバー側＝Cloud Functions が担当。メールアドレスは
   //   プライバシー保護のためクライアントからは読み取らない設計）
   if(tags.length && window.snDb && window.snDb.enqueueNotify){
-    window.snDb.enqueueNotify({ consultationId:id, title:state.ptitle.trim(), tags:tags, status:'pending', createdAt:Date.now() });
+    window.snDb.enqueueNotify({
+      consultationId: id,
+      title: state.ptitle.trim(),
+      excerpt: (state.pbody || '').trim().slice(0, 160),
+      category: (cats[state.pcat] && cats[state.pcat].label) || '',
+      tags: tags, status: 'pending', createdAt: Date.now()
+    });
   }
 }
 function findCommunityPost(id){ for(var i=0;i<state.communityPosts.length;i++){ if(state.communityPosts[i].id===id) return state.communityPosts[i]; } return null; }
@@ -800,6 +807,19 @@ function sendInvite(email, by, name){
   openModal(inviteMailModal(email, by, name), 560);
 }
 
+// タグ削除の確認ダイアログ
+function adminTagDeleteModal(tag){
+  return '<div style="padding:30px 28px 26px">'
+    + '<h2 style="font-size:18px;font-weight:900;color:#14233f;margin:0 0 10px">このタグを削除しますか？</h2>'
+    + '<p style="font-size:13px;color:#5a6678;line-height:1.9;margin:0 0 16px">相談フォームと先輩の得意分野の選択肢から消えます。すでにこのタグが付いている相談やプロフィールはそのまま残りますが、新しい通知の振り分けには使われなくなります。</p>'
+    + '<div style="background:#f7f9fc;border:1px solid #e7edf6;border-radius:11px;padding:13px 15px">'
+    + '<div style="font-size:11px;font-weight:700;color:#8a97ac;margin-bottom:5px">対象</div>'
+    + '<div style="font-size:13px;font-weight:700;color:#1b2942">#'+esc(tag)+'</div></div>'
+    + '<div style="display:flex;gap:12px;justify-content:flex-end;margin-top:22px">'
+    + '<button data-modal-close-btn style="cursor:pointer;background:#fff;border:1.5px solid #d4dde9;color:#3a465f;font-weight:700;font-size:13.5px;padding:11px 22px;border-radius:10px">キャンセル</button>'
+    + '<button data-admin-tag-del-confirm="'+esc(tag)+'" style="cursor:pointer;border:none;background:#c0392b;color:#fff;font-weight:700;font-size:13.5px;padding:11px 24px;border-radius:10px">削除する</button>'
+    + '</div></div>';
+}
 // 運営メンバー解除の確認ダイアログ
 function adminRemoveMemberModal(email){
   return '<div style="padding:30px 28px 26px">'
@@ -2888,6 +2908,7 @@ var admP = {
   db:'<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
   ext:'<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/>',
   back:'<path d="M19 12H5M12 19l-7-7 7-7"/>',
+  tag:'<path d="M20.6 13.4L12 22l-9-9V3h10z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
   warn:'<path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
   userplus:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>',
   help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.5 2.5 0 1 1 3.6 2.4c-.8.4-1.1 1-1.1 1.9"/><path d="M12 17h.01"/>',
@@ -2974,6 +2995,51 @@ function adminActivity(){
   ]);
   return admPageHead('アクティビティログ','運営操作やシステムの記録を確認できます。')
     + admCard('最近のアクティビティ','', items);
+}
+
+// 相談タグの管理。ここで編集した内容が相談フォーム・先輩の登録フォーム・
+// 通知のマッチング条件のすべてに反映される。
+function adminTagsPage(){
+  var rows = HASHTAGS.map(function(tg, i){
+    var editing = state.adminEditTag === tg;
+    var cell = editing
+      ? '<input id="admin-tag-edit" value="'+esc(state.adminEditTagText)+'" style="width:100%;box-sizing:border-box;border:1.5px solid #2f73e8;border-radius:9px;padding:8px 11px;font-size:13.5px;color:#1b2942;outline:none">'
+      : '<span style="font-size:13.5px;font-weight:700;color:#1b2942">#'+esc(tg)+'</span>';
+    var actions = editing
+      ? admActionBtn('保存','data-admin-tag-save="'+esc(tg)+'"','primary') + admActionBtn('やめる','data-admin-tag-cancel="1"','')
+      : admActionBtn('名前を変える','data-admin-tag-edit="'+esc(tg)+'"','')
+        + (i>0 ? admActionBtn('↑','data-admin-tag-up="'+esc(tg)+'"','') : '')
+        + admActionBtn('削除','data-admin-tag-del="'+esc(tg)+'"','danger');
+    return '<tr>'
+      + admTd('<span style="color:#94a1b5">'+(i+1)+'</span>')
+      + admTd(cell, 'white-space:normal;width:60%;')
+      + admTd('<span style="display:inline-flex;gap:7px;flex-wrap:wrap">'+actions+'</span>')
+      + '</tr>';
+  }).join('');
+  var listCard = admCard('タグ一覧（'+HASHTAGS.length+'件）','', HASHTAGS.length
+    ? admTable(['#','タグ','操作'], rows)
+    : '<div style="padding:26px;text-align:center;color:#94a1b5;font-size:13px">タグがありません。</div>');
+
+  var addCard = admCard('タグを追加','',
+    '<div style="padding:18px 20px">'
+    + '<p style="font-size:12.5px;color:#66738c;line-height:1.85;margin:0 0 12px">追加したタグは、相談フォームと先輩の得意分野の選択肢にすぐ反映されます。</p>'
+    + '<input id="admin-tag-new" value="'+esc(state.adminNewTag||'')+'" placeholder="例：メンタル・健康" style="width:100%;box-sizing:border-box;border:1.5px solid #dde4f1;border-radius:10px;padding:11px 13px;font-size:13.5px;color:#1b2942;outline:none">'
+    + '<button data-admin-tag-add="1" style="cursor:pointer;border:none;background:#2f73e8;color:#fff;font-weight:700;font-size:13.5px;padding:12px 22px;border-radius:10px;width:100%;margin-top:12px">追加する</button>'
+    + '</div>');
+
+  var note = '<div style="background:#eef4ff;border:1px solid #cfe0fb;border-radius:14px;padding:16px 18px;margin-top:18px">'
+    + '<div style="font-size:12.5px;font-weight:800;color:#1f5fd0;margin-bottom:6px">タグと通知の関係</div>'
+    + '<p style="font-size:12px;color:#51627e;line-height:1.9;margin:0">先輩は登録時に得意分野のタグを選びます。相談に同じタグが付くと、その先輩にメールで通知が届きます。<br><br>タグの名前を変えると、すでにそのタグで登録している先輩とは一致しなくなります。名前を変えるより、新しいタグを追加する方が安全です。</p></div>';
+
+  return admPageHead('タグ管理','相談につけるタグを追加・編集できます。先輩への通知の振り分けにも使われます。')
+    + '<div class="admin-cols">'+listCard+'<div>'+addCard+note+'</div></div>';
+}
+
+// タグの変更を保存して、全画面に反映する
+function applyTags(list){
+  HASHTAGS.length = 0;
+  list.forEach(function(t){ HASHTAGS.push(t); });
+  if(window.snDb && window.snDb.saveTags) window.snDb.saveTags(HASHTAGS.slice());
 }
 
 // 運営メンバー（管理コンソールにログインできるアカウント）の管理
@@ -3481,6 +3547,7 @@ function adminHTML(){
       ['analytics','相談データ分析',admIcons.pie],
       ['activity','アクティビティログ',admIcons.history] ] },
     { label:'システム', items:[
+      ['tags','タグ管理',admIcons.tag],
       ['members','運営メンバー',admIcons.people],
       ['settings','設定',admIcons.gear],
       ['mail','メール送信履歴',admIcons.mail],
@@ -3506,6 +3573,7 @@ function adminHTML(){
     case 'news': content = adminNews(); break;
     case 'activity': content = adminActivity(); break;
     case 'members': content = adminMembersPage(); break;
+    case 'tags': content = adminTagsPage(); break;
     case 'posts': content = adminPlaceholder('投稿・コメント管理','コミュニティ投稿やコメントの管理機能を準備中です。'); break;
     case 'events': content = adminPlaceholder('イベント管理','イベントの作成・管理機能を準備中です。'); break;
     case 'report': content = adminPlaceholder('利用状況レポート','利用状況のレポート出力を準備中です。'); break;
@@ -3773,7 +3841,7 @@ function on(sel,evt,fn){ var n=document.getElementById(sel); if(n) n.addEventLis
 // handlers across re-renders, which would fire toggles multiple times.
 function setupDelegation(){
   document.body.addEventListener('click', function(e){
-    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-open-cons],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-admin-add-member],[data-admin-remove-member],[data-admin-resend-invite],[data-invite-copy],[data-report-open],[data-report-reason],[data-report-submit],[data-admin-remove-confirm],[data-report-confirm],[data-report-warn],[data-report-suspend],[data-report-delete],[data-report-dismiss],[data-menu]');
+    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-open-cons],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-admin-add-member],[data-admin-remove-member],[data-admin-resend-invite],[data-invite-copy],[data-admin-tag-add],[data-admin-tag-edit],[data-admin-tag-cancel],[data-admin-tag-save],[data-admin-tag-up],[data-admin-tag-del],[data-admin-tag-del-confirm],[data-report-open],[data-report-reason],[data-report-submit],[data-admin-remove-confirm],[data-report-confirm],[data-report-warn],[data-report-suspend],[data-report-delete],[data-report-dismiss],[data-menu]');
     if(!t) return;
     if(t.hasAttribute('data-like') || t.hasAttribute('data-bookmark') || t.hasAttribute('data-helpful')) e.stopPropagation();
 
@@ -3899,6 +3967,53 @@ function setupDelegation(){
       if(window.snDb && window.snDb.sendAdminInvite) window.snDb.sendAdminInvite(rem2, by2);
       var mm = state.adminMembers.filter(function(m){ return (m.email||'').toLowerCase()===rem2.toLowerCase(); })[0];
       sendInvite(rem2, by2, mm && mm.name);
+      return;
+    }
+    // ---- タグ管理 ----
+    if(t.hasAttribute('data-admin-tag-add')){
+      var ti = document.getElementById('admin-tag-new');
+      var tv = ((ti && ti.value) || state.adminNewTag || '').trim().replace(/^#/, '');
+      if(!tv){ toast('タグ名を入力してください'); return; }
+      if(tv.length > 20){ toast('タグ名は20文字以内にしてください'); return; }
+      if(HASHTAGS.indexOf(tv) !== -1){ toast('同じタグがすでにあります'); return; }
+      applyTags(HASHTAGS.concat([tv]));
+      state.adminNewTag = '';
+      render(); toast('#'+tv+' を追加しました');
+      return;
+    }
+    if(t.hasAttribute('data-admin-tag-edit')){
+      state.adminEditTag = t.getAttribute('data-admin-tag-edit');
+      state.adminEditTagText = state.adminEditTag;
+      render(); return;
+    }
+    if(t.hasAttribute('data-admin-tag-cancel')){ state.adminEditTag = null; render(); return; }
+    if(t.hasAttribute('data-admin-tag-save')){
+      var oldTag = t.getAttribute('data-admin-tag-save');
+      var ei = document.getElementById('admin-tag-edit');
+      var nv = ((ei && ei.value) || state.adminEditTagText || '').trim().replace(/^#/, '');
+      if(!nv){ toast('タグ名を入力してください'); return; }
+      if(nv !== oldTag && HASHTAGS.indexOf(nv) !== -1){ toast('同じタグがすでにあります'); return; }
+      applyTags(HASHTAGS.map(function(x){ return x === oldTag ? nv : x; }));
+      state.adminEditTag = null;
+      render(); toast('タグ名を変更しました');
+      return;
+    }
+    if(t.hasAttribute('data-admin-tag-up')){
+      var ut = t.getAttribute('data-admin-tag-up'), ui = HASHTAGS.indexOf(ut);
+      if(ui > 0){
+        var arr = HASHTAGS.slice();
+        arr[ui] = arr[ui-1]; arr[ui-1] = ut;
+        applyTags(arr); render();
+      }
+      return;
+    }
+    if(t.hasAttribute('data-admin-tag-del')){
+      return openModal(adminTagDeleteModal(t.getAttribute('data-admin-tag-del')), 420);
+    }
+    if(t.hasAttribute('data-admin-tag-del-confirm')){
+      var dt = t.getAttribute('data-admin-tag-del-confirm');
+      applyTags(HASHTAGS.filter(function(x){ return x !== dt; }));
+      closeModal(); render(); toast('#'+dt+' を削除しました');
       return;
     }
     // ---- 利用者からの通報 ----
@@ -4053,6 +4168,8 @@ function wire(){
   on('reply-text','input', function(e){ state.replyText = e.target.value; });
   on('admin-add-email','input', function(e){ state.adminNewEmail = e.target.value; });
   on('admin-add-name','input', function(e){ state.adminNewName = e.target.value; });
+  on('admin-tag-new','input', function(e){ state.adminNewTag = e.target.value; });
+  on('admin-tag-edit','input', function(e){ state.adminEditTagText = e.target.value; });
   on('reply-submit','click', submitReply);
 }
 function postValid(){ return !!(state.pcat && state.ptitle.trim() && state.pbody.trim()); }
@@ -4105,6 +4222,12 @@ window.snOnReports = function(list){
   var ids = {}; list.forEach(function(r){ ids[r.id] = true; });
   var keep = state.adminReports.filter(function(r){ return !ids[r.id]; });
   state.adminReports = list.concat(keep);
+  render();
+};
+// Firestore に保存されたタグ一覧を受け取って差し替える
+window.snOnTags = function(list){
+  HASHTAGS.length = 0;
+  list.forEach(function(t){ HASHTAGS.push(t); });
   render();
 };
 window.snAuthError = function(msg){ toast('ログインに失敗しました'); };
@@ -4270,7 +4393,16 @@ render();
         // マイページ用の投稿履歴（相談本体は匿名のまま、本人の配下にだけ記録）
         addMyPost: async (uid, cid, p) => { try { await setDoc(doc(db, "users", uid, "myPosts", cid), p); } catch (e) {} },
         // タグ付き相談の通知キュー。マッチングとメール送信はサーバー側で行う。
-        enqueueNotify: async (q) => { try { await addDoc(collection(db, "mailQueue"), q); } catch (e) {} }
+        enqueueNotify: async (q) => { try { await addDoc(collection(db, "mailQueue"), q); } catch (e) {} },
+        // 相談タグ（config/hashtags に配列で保存。読み取りは全員、書き込みは運営のみ）
+        loadTags: async () => {
+          try {
+            const ds = await getDoc(doc(db, "config", "hashtags"));
+            const list = ds.exists() ? (ds.data() || {}).list : null;
+            if (Array.isArray(list) && list.length && window.snOnTags) window.snOnTags(list);
+          } catch (e) {}
+        },
+        saveTags: async (list) => { try { await setDoc(doc(db, "config", "hashtags"), { list: list, updatedAt: Date.now() }); } catch (e) {} }
       };
       async function loadConsultations() {
         try {
@@ -4316,6 +4448,7 @@ render();
         } catch (e) { /* 取得失敗時は組み込みのシードのまま */ }
       }
       loadConsultations();
+      window.snDb.loadTags();
 
       const allowList = ADMIN_EMAILS.map(e => e.toLowerCase());
       async function isAuthorized(user) {

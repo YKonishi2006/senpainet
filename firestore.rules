@@ -82,6 +82,12 @@ service cloud.firestore {
       allow create, read, update, delete: if isAdmin();
     }
 
+    // 公開設定（相談タグの一覧など）。表示に必要なので読み取りは全員、変更は運営のみ。
+    match /config/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // 通知キュー（タグ付き相談の通知依頼）。作成は誰でも、閲覧・処理は運営/サーバーのみ。
     match /mailQueue/{id} {
       allow create: if request.resource.data.consultationId is string
