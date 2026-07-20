@@ -358,6 +358,7 @@ var state = {
   adminTab: 'dashboard', adminSelectedId: null, adminReportId: null,
   reportTarget: null, reportReason: '', reportNote: '', adminReportsLoaded: false,
   adminNewTag: '', adminEditTag: null, adminEditTagText: '',
+  mpTags: null, mpEmail: '', mpNotify: true, mpProfileLoaded: false,
   adminMembers: [], adminMembersLoaded: false, adminMembersLoading: false, adminMembersError: false, adminNewEmail: '', adminNewName: '',
   // Firebase 認証（Googleログイン＋招待制の許可リスト）
   authReady: false, authConfigured: false, authUser: null, adminAuthorized: false,
@@ -1790,6 +1791,30 @@ function mypageHTML(){
       + '</div>';
   }
 
+  // 先輩（卒業生）向け：得意分野タグとメール通知の設定
+  function senpaiNotifyForm(){
+    // 初回表示時は、保存済みプロフィール（なければ登録時の内容）で初期化する
+    var tags = state.mpTags !== null ? state.mpTags : (state.userTags || []).slice();
+    var chips = HASHTAGS.map(function(tg){
+      var on = tags.indexOf(tg) !== -1;
+      return '<span data-mp-tag="'+esc(tg)+'" style="cursor:pointer;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:20px;border:1.5px solid '+(on?'#2f73e8':'#dde4f1')+';background:'+(on?'#2f73e8':'#fff')+';color:'+(on?'#fff':'#5a6678')+'">#'+esc(tg)+'</span>';
+    }).join('');
+
+    return '<h3 style="margin:26px 0 14px;font-size:16px;font-weight:900;color:#1b2942">得意分野とメール通知</h3>'
+      + '<div style="background:#fff;border:1px solid #e7edf6;border-radius:16px;padding:24px 26px;max-width:540px">'
+      + '<p style="font-size:12.5px;color:#66738c;line-height:1.85;margin:0 0 18px">選んだ分野の相談が投稿されると、メールでお知らせします。後輩からの相談に気づきやすくなります。</p>'
+      + '<label style="display:block;font-size:13px;font-weight:700;color:#3a465f;margin-bottom:9px">得意分野（複数選べます）</label>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:8px">'+chips+'</div>'
+      + '<label style="display:block;font-size:13px;font-weight:700;color:#3a465f;margin:20px 0 7px">通知先のメールアドレス</label>'
+      + '<input id="mp-email" value="'+esc(state.mpEmail||'')+'" placeholder="you@example.com" style="width:100%;box-sizing:border-box;border:1.5px solid #dde4f1;border-radius:10px;padding:12px 14px;font-size:14px;color:#1b2942;outline:none">'
+      + '<div data-mp-notify="1" style="display:flex;align-items:center;gap:9px;margin-top:14px;cursor:pointer">'
+      + '<span style="width:18px;height:18px;border-radius:5px;border:1.5px solid '+(state.mpNotify?'#2f73e8':'#c3cbd6')+';background:'+(state.mpNotify?'#2f73e8':'#fff')+';display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">'+(state.mpNotify?'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5"><path d="M20 6L9 17l-5-5"/></svg>':'')+'</span>'
+      + '<span style="font-size:12.5px;color:#3a465f">メールでの通知を受け取る</span></div>'
+      + '<p style="font-size:11px;color:#94a1b5;line-height:1.7;margin:10px 0 0">チェックを外すと通知は届かなくなります。メールアドレスは通知のみに使用し、他の利用者には公開されません。</p>'
+      + '<div style="display:flex;justify-content:flex-end;margin-top:22px"><button data-mp-notify-save="1" style="cursor:pointer;border:none;background:#2f73e8;color:#fff;font-weight:700;font-size:14px;padding:12px 30px;border-radius:10px">通知設定を保存</button></div>'
+      + '</div>';
+  }
+
   // ---- content by tab ----
   var content;
   if(tab==='posts'){
@@ -1799,7 +1824,7 @@ function mypageHTML(){
   } else if(tab==='notifications'){
     content = notifsInline();
   } else if(tab==='settings'){
-    content = settingsForm();
+    content = settingsForm() + (statusOf(state.userKaisei).type==='grad' ? senpaiNotifyForm() : '');
   } else {
     content = blockHead('自分の相談', 'posts') + '<div style="display:flex;flex-direction:column;gap:12px">'+postsList(3)+'</div>'
       + blockHead('ブックマーク', 'bookmarks') + '<div style="display:flex;flex-direction:column;gap:12px">'+bmList(3)+'</div>';
@@ -3841,7 +3866,7 @@ function on(sel,evt,fn){ var n=document.getElementById(sel); if(n) n.addEventLis
 // handlers across re-renders, which would fire toggles multiple times.
 function setupDelegation(){
   document.body.addEventListener('click', function(e){
-    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-open-cons],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-admin-add-member],[data-admin-remove-member],[data-admin-resend-invite],[data-invite-copy],[data-admin-tag-add],[data-admin-tag-edit],[data-admin-tag-cancel],[data-admin-tag-save],[data-admin-tag-up],[data-admin-tag-del],[data-admin-tag-del-confirm],[data-report-open],[data-report-reason],[data-report-submit],[data-admin-remove-confirm],[data-report-confirm],[data-report-warn],[data-report-suspend],[data-report-delete],[data-report-dismiss],[data-menu]');
+    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-mp-tag],[data-mp-notify],[data-mp-notify-save],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-open-cons],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-admin-add-member],[data-admin-remove-member],[data-admin-resend-invite],[data-invite-copy],[data-admin-tag-add],[data-admin-tag-edit],[data-admin-tag-cancel],[data-admin-tag-save],[data-admin-tag-up],[data-admin-tag-del],[data-admin-tag-del-confirm],[data-report-open],[data-report-reason],[data-report-submit],[data-admin-remove-confirm],[data-report-confirm],[data-report-warn],[data-report-suspend],[data-report-delete],[data-report-dismiss],[data-menu]');
     if(!t) return;
     if(t.hasAttribute('data-like') || t.hasAttribute('data-bookmark') || t.hasAttribute('data-helpful')) e.stopPropagation();
 
@@ -3872,6 +3897,38 @@ function setupDelegation(){
     if(t.hasAttribute('data-setup-grade')){ state.setupGrade = parseInt(t.getAttribute('data-setup-grade'),10); render(); return; }
     if(t.hasAttribute('data-setup-tag')){ var stg=t.getAttribute('data-setup-tag'); var si=state.setupTags.indexOf(stg); if(si===-1) state.setupTags.push(stg); else state.setupTags.splice(si,1); render(); return; }
     if(t.hasAttribute('data-setup-notify')){ state.setupNotify = !state.setupNotify; render(); return; }
+    // ---- マイページ：得意分野タグとメール通知 ----
+    if(t.hasAttribute('data-mp-tag')){
+      var mtg = t.getAttribute('data-mp-tag');
+      if(state.mpTags === null) state.mpTags = (state.userTags || []).slice();
+      var mi = state.mpTags.indexOf(mtg);
+      if(mi === -1) state.mpTags.push(mtg); else state.mpTags.splice(mi, 1);
+      var mem = document.getElementById('mp-email'); if(mem) state.mpEmail = mem.value; // 再描画で消えないよう保持
+      render(); return;
+    }
+    if(t.hasAttribute('data-mp-notify')){
+      var mem2 = document.getElementById('mp-email'); if(mem2) state.mpEmail = mem2.value;
+      state.mpNotify = !state.mpNotify; render(); return;
+    }
+    if(t.hasAttribute('data-mp-notify-save')){
+      var mi2 = document.getElementById('mp-email');
+      var mail = ((mi2 && mi2.value) || state.mpEmail || '').trim();
+      var mtags = state.mpTags !== null ? state.mpTags : (state.userTags || []).slice();
+      if(state.mpNotify){
+        if(!mail || mail.indexOf('@') === -1 || mail.indexOf('.') === -1){ toast('メールアドレスを正しく入力してください'); return; }
+        if(!mtags.length){ toast('得意分野を1つ以上選んでください'); return; }
+      }
+      state.mpEmail = mail; state.mpTags = mtags; state.userTags = mtags.slice();
+      if(window.snDb && window.snDb.saveSenpaiProfile){
+        window.snDb.saveSenpaiProfile({
+          email: mail, kaisei: state.userKaisei, univ: state.userUniv || '', faculty: state.userFaculty || '',
+          tags: mtags.slice(), notify: !!state.mpNotify, updatedAt: Date.now()
+        });
+      }
+      render();
+      toast(state.mpNotify ? '通知設定を保存しました' : 'メール通知をオフにしました');
+      return;
+    }
     if(t.hasAttribute('data-ptag')){ var ptg=t.getAttribute('data-ptag'); var pi=state.pTags.indexOf(ptg); if(pi===-1) state.pTags.push(ptg); else state.pTags.splice(pi,1); render(); return; }
     if(t.hasAttribute('data-setup-skip')){ toast('プロフィールはマイページからいつでも設定できます'); go('mypage'); return; }
     if(t.hasAttribute('data-setup-done')){ completeSetup(); return; }
@@ -4224,6 +4281,16 @@ window.snOnReports = function(list){
   state.adminReports = list.concat(keep);
   render();
 };
+// 保存済みの先輩プロフィールをマイページの入力欄に反映する
+window.snOnSenpaiProfile = function(p){
+  if(!p) return;
+  state.mpTags = Array.isArray(p.tags) ? p.tags.slice() : [];
+  state.mpEmail = p.email || '';
+  state.mpNotify = p.notify !== false;
+  state.mpProfileLoaded = true;
+  if(state.mpTags.length) state.userTags = state.mpTags.slice();
+  render();
+};
 // Firestore に保存されたタグ一覧を受け取って差し替える
 window.snOnTags = function(list){
   HASHTAGS.length = 0;
@@ -4374,7 +4441,27 @@ render();
         },
         removeAdmin: async (email) => { try { await deleteDoc(doc(db, "admins", email)); return true; } catch (e) { return false; } },
         // 先輩プロフィール（得意分野タグ＋通知先メール）。メールは公開読み取り不可。
-        saveSenpaiProfile: async (p) => { try { await addDoc(collection(db, "senpaiProfiles"), p); } catch (e) {} },
+        // ログイン中は uid をドキュメントIDにして「上書き保存」できるようにする。
+        // 未ログインのときだけ従来どおり新規作成（あとから編集はできない）。
+        saveSenpaiProfile: async (p) => {
+          try {
+            const u = auth.currentUser;
+            if (u) {
+              p.uid = u.uid;
+              if (!p.updatedAt) p.updatedAt = Date.now();
+              await setDoc(doc(db, "senpaiProfiles", u.uid), p, { merge: true });
+            } else {
+              await addDoc(collection(db, "senpaiProfiles"), p);
+            }
+          } catch (e) {}
+        },
+        // 自分の先輩プロフィールを読む（マイページの初期表示用）
+        loadSenpaiProfile: async (uid) => {
+          try {
+            const ds = await getDoc(doc(db, "senpaiProfiles", uid));
+            return ds.exists() ? ds.data() : null;
+          } catch (e) { return null; }
+        },
         // ログインユーザーのプロフィール（本人のみ読み書き可）
         saveUserProfile: async (uid, p) => { try { await setDoc(doc(db, "users", uid), p, { merge: true }); } catch (e) {} },
         // 利用者からの通報を保存する（作成は誰でも可／閲覧は運営のみ＝ルールで保護）
@@ -4470,6 +4557,11 @@ render();
         if (user) { try { const ps = await getDoc(doc(db, "users", user.uid)); if (ps.exists()) profile = ps.data(); } catch (e) {} }
         const u = user ? { uid: user.uid, email: user.email, name: user.displayName || "", photo: user.photoURL || "" } : null;
         if (window.snOnAuthChange) window.snOnAuthChange(u, authorized, true, profile);
+        // 先輩プロフィール（得意分野タグ・通知先）を読み込んでマイページに反映
+        if (user && window.snOnSenpaiProfile) {
+          const sp = await window.snDb.loadSenpaiProfile(user.uid);
+          if (sp) window.snOnSenpaiProfile(sp);
+        }
         // 運営メンバーがログインしたら「登録済み」として記録する
         if (user && authorized && user.email) {
           try { await window.snDb.markAdminJoined(user.email, user.displayName || ""); } catch (e) {}

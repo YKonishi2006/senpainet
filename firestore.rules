@@ -68,11 +68,13 @@ service cloud.firestore {
     // 先輩プロフィール（得意分野タグ＋通知先メール）
     // メールアドレスを含むため公開読み取りは禁止。作成は誰でも（自己登録）、
     // 閲覧・編集・削除は運営のみ。マッチングとメール送信はサーバー側(Functions)が行う。
+    // ログイン中は uid をドキュメントIDにするため、本人だけが自分の設定を
+    // 読み書きできる（マイページからタグ・通知先を編集するのに必要）。
     match /senpaiProfiles/{id} {
       allow create: if request.resource.data.email is string
-                    && request.resource.data.email.size() > 3
                     && request.resource.data.email.size() <= 200
                     && request.resource.data.tags is list;
+      allow read, update, delete: if request.auth != null && request.auth.uid == id;
       allow read, update, delete: if isAdmin();
     }
 

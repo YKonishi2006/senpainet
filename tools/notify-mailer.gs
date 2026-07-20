@@ -87,12 +87,9 @@ function processNotifyQueue() {
 
     if (tags.length) {
       // タグが1つでも一致する先輩を集める（重複アドレスは除く）
-      var seen = {};
+      // listSenpaiProfiles の時点でアドレスの重複は解消済み
       var targets = senpai.filter(function (p) {
-        if (!p.email || seen[p.email]) return false;
-        var hit = p.tags.some(function (t) { return tags.indexOf(t) !== -1; });
-        if (hit) seen[p.email] = true;
-        return hit;
+        return p.tags.some(function (t) { return tags.indexOf(t) !== -1; });
       }).slice(0, MAX_RECIPIENTS);
 
       targets.forEach(function (p) {
@@ -283,11 +280,29 @@ function listSenpaiProfiles(token) {
     var data = JSON.parse(res.getContentText());
     (data.documents || []).forEach(function (d) {
       var f = d.fields || {};
-      out.push({ email: toStr(f.email).trim(), tags: toArray(f.tags) });
+      out.push({
+        email: toStr(f.email).trim(),
+        tags: toArray(f.tags),
+        // notify が明示的に false のときだけ通知を止める（未設定は従来どおり通知する）
+        notify: !(f.notify && f.notify.booleanValue === false),
+        updatedAt: Number(toStr(f.updatedAt) || toStr(f.createdAt) || 0)
+      });
     });
     pageToken = data.nextPageToken || '';
   } while (pageToken);
-  return out;
+
+  // 同じアドレスの登録が複数あれば、最後に更新されたものだけを使う。
+  // （マイページ導入前の登録が残っていても、最新の設定が優先される）
+  var latest = {};
+  out.forEach(function (p) {
+    if (!p.email) return;
+    var cur = latest[p.email];
+    if (!cur || p.updatedAt >= cur.updatedAt) latest[p.email] = p;
+  });
+
+  return Object.keys(latest)
+    .map(function (k) { return latest[k]; })
+    .filter(function (p) { return p.notify; });
 }
 
 function patchDoc(token, docName, fields, maskPaths) {
