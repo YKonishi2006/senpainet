@@ -697,6 +697,8 @@ function submitReply(){
 }
 // 投稿完了時に実際の相談として追加（→ 相談件数・回答率が順次反映）
 function addUserConsultation(){
+  // 画面を経由せず呼ばれた場合の保険（未ログインでは投稿させない）
+  if(!state.loggedIn){ go('post'); toast('相談するには登録が必要です'); return false; }
   var g = Math.max(1, Math.min(6, gradeOf(state.userKaisei)));
   var id = 'u_'+Date.now();
   var bodyText = state.pbody.trim();
@@ -1330,6 +1332,33 @@ function browseHTML(){
 }
 
 /* ============ POST ============ */
+// 相談の投稿はアカウント登録が必要（閲覧・検索は登録なしで利用できる）。
+// 匿名性は保たれる：相談本体にはアカウント情報を一切保存していない。
+function postGateHTML(){
+  var lockIcon = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
+  function point(title, desc){
+    return '<div style="display:flex;gap:11px;align-items:flex-start">'
+      + '<span style="display:flex;color:#1e9e63;flex-shrink:0;margin-top:2px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg></span>'
+      + '<div><div style="font-size:13.5px;font-weight:800;color:#1b2942">'+title+'</div>'
+      + '<p style="font-size:12.5px;color:#66738c;line-height:1.8;margin:4px 0 0">'+desc+'</p></div></div>';
+  }
+  return '<main class="rs-pad" style="max-width:1180px;margin:0 auto;padding:44px 28px 80px">'
+    + '<div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e7edf6;border-radius:20px;padding:38px 34px;text-align:center">'
+    + '<div style="width:60px;height:60px;border-radius:18px;background:#e8f1fe;color:#2f73e8;display:flex;align-items:center;justify-content:center;margin:0 auto 18px">'+lockIcon+'</div>'
+    + '<h1 style="margin:0;font-size:21px;font-weight:900;color:#14233f;line-height:1.5">相談するには登録が必要です</h1>'
+    + '<p style="font-size:13.5px;color:#66738c;line-height:1.9;margin:12px 0 0">相談を読むだけなら登録は不要です。<br>投稿には無料のアカウント登録をお願いしています。</p>'
+    + '<div style="display:flex;flex-direction:column;gap:15px;text-align:left;background:#f7f9fc;border:1px solid #e7edf6;border-radius:14px;padding:20px 22px;margin:24px 0">'
+    + point('投稿しても匿名のままです','相談に名前やアカウント情報が紐づくことはありません。先輩からは学年だけが見えます。')
+    + point('回答が届いたら分かります','マイページで自分の相談と回答をまとめて確認できます。')
+    + point('安心して使える場を守るため','悪質な投稿を防ぎ、みんなが相談しやすい場所を保つためにご協力ください。')
+    + '</div>'
+    + '<button data-auth="signup" style="width:100%;cursor:pointer;border:none;background:#2f73e8;color:#fff;font-weight:800;font-size:15px;padding:14px;border-radius:12px">無料で登録して相談する</button>'
+    + '<div style="font-size:13px;color:#66738c;margin-top:14px">すでにアカウントをお持ちですか？ '
+    + '<span data-auth="login" style="cursor:pointer;color:#2f73e8;font-weight:700">ログイン</span></div>'
+    + '<div style="margin-top:22px;padding-top:20px;border-top:1px solid #eef1f7">'
+    + '<span data-nav="browse" style="cursor:pointer;font-size:13px;font-weight:700;color:#66738c">まずは他の人の相談を読んでみる ›</span></div>'
+    + '</div></main>';
+}
 function postHTML(){
   // step indicator (shared across steps)
   var stepData = [[1,'内容を入力'],[2,'内容を確認'],[3,'投稿完了']];
@@ -3814,7 +3843,7 @@ function screenHTML(){
     case 'community': return communityHTML();
     case 'outreach': return outreachHTML();
     case 'browse': return consBrowseHTML();
-    case 'post': return postHTML();
+    case 'post': return (!state.loggedIn && state.pstep !== 3) ? postGateHTML() : postHTML();
     case 'detail': return detailHTML();
     case 'alumni': return alumniHTML();
     case 'howto': return howtoHTML();
@@ -4178,7 +4207,7 @@ function wire(){
   on('p-context','input', function(e){ state.pContext = e.target.value; });
   on('confirm-post','click', confirmPost);
   on('back-step','click', function(){ state.pstep=1; render(); toTop(); });
-  on('submit-post','click', function(){ addUserConsultation(); state.pstep=3; render(); toTop(); });
+  on('submit-post','click', function(){ if(addUserConsultation() === false) return; state.pstep=3; render(); toTop(); });
 
   // マイページ プロフィール設定 保存
   on('mp-save','click', function(){
