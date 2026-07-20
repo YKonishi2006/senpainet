@@ -41,7 +41,26 @@
   [data-edit-tag]:active, [data-report-reason]:active, [data-setup-tag]:active{ transform: translateY(0) }
 
   /* ナビ・テキストリンク系は浮かせず、色の変化だけにする */
-  [data-nav]:hover{ filter: brightness(1.1) }
+  [data-nav]:not(.nav-link):not(.nav-row):hover{ filter: brightness(1.1) }
+
+  /* ヘッダーのナビ：下線が伸びて色が変わる。インラインstyleを上書きするため
+     !important を使っている（各項目の色・下線は描画時に直接指定されているため） */
+  .nav-link{ position: relative; transition: color .18s ease }
+  .nav-link::after{
+    content: ""; position: absolute; left: 50%; right: 50%; bottom: -2px; height: 2px;
+    background: #2f73e8; border-radius: 2px; transition: left .22s ease, right .22s ease;
+  }
+  .nav-link:hover{ color: #2f73e8 !important }
+  .nav-link:hover::after{ left: 0; right: 0 }
+  /* 選択中の項目は最初から下線が引かれているので、::after は出さない */
+  .nav-link-on::after{ content: none }
+  .nav-link:focus-visible{ outline: 2px solid #2f73e8; outline-offset: 3px; border-radius: 3px }
+
+  /* モバイルメニューの各行：背景を敷いて矢印を右に送る */
+  .nav-row{ transition: background .16s ease, padding-left .16s ease }
+  .nav-row:hover{ background: #f2f7fd; padding-left: 10px !important; color: #2f73e8 !important }
+  .nav-row-chev{ transition: transform .16s ease, color .16s ease; display: inline-block }
+  .nav-row:hover .nav-row-chev{ transform: translateX(3px); color: #2f73e8 }
 
   /* キーボード操作でも位置が分かるように */
   button:focus-visible, [data-auth]:focus-visible, [data-ptag]:focus-visible,
@@ -56,6 +75,9 @@
     [data-mp-tag]:hover, [data-edit-tag]:hover, [data-report-reason]:hover, [data-setup-tag]:hover{
       transform: none;
     }
+    .nav-link, .nav-link::after, .nav-row, .nav-row-chev{ transition: none }
+    .nav-row:hover{ padding-left: 4px !important }
+    .nav-row:hover .nav-row-chev{ transform: none }
   }
 
   /* ===== Responsive ===== */
@@ -1100,7 +1122,7 @@ function avatar(sz,bg,fg){ return '<svg width="'+sz+'" height="'+sz+'" viewBox="
 function mobileMenuHTML(){
   if(!state.menuOpen) return '';
   function item(label, attr, active){
-    return '<div '+attr+' style="display:flex;align-items:center;justify-content:space-between;padding:14px 4px;font-size:15px;font-weight:'+(active?700:500)+';color:'+(active?'#2f73e8':'#3a465f')+';border-bottom:1px solid #edf1f8;cursor:pointer">'+label+'<span style="color:#bcc6d6">›</span></div>';
+    return '<div '+attr+' class="nav-row" style="display:flex;align-items:center;justify-content:space-between;padding:14px 4px;font-size:15px;font-weight:'+(active?700:500)+';color:'+(active?'#2f73e8':'#3a465f')+';border-bottom:1px solid #edf1f8;cursor:pointer">'+label+'<span class="nav-row-chev" style="color:#bcc6d6">›</span></div>';
   }
   var navDefs = [['ホーム','data-nav="home"','home'],['SenpaiNetについて','data-nav="about"','about'],['相談を探す','data-nav="browse"','browse'],['相談する','data-nav="post"','post'],['先輩の方へ','data-nav="alumni"','alumni'],['コミュニティ','data-nav="community"','community'],['お知らせ','data-nav="news"','news'],['使い方','data-nav="howto"','howto']];
   var items = navDefs.map(function(d){ return item(d[0], d[1], d[2] && state.screen===d[2]); }).join('');
@@ -1128,7 +1150,7 @@ function headerHTML(){
     var color = active?'#2f73e8':'#3a465f';
     var weight = active?700:500;
     var ul = active?'#2f73e8':'transparent';
-    return '<span data-'+kind+'="'+key+'" style="font-size:14px;cursor:pointer;padding:22px 0;border-bottom:2px solid '+ul+';color:'+color+';font-weight:'+weight+'">'+label+'</span>';
+    return '<span data-'+kind+'="'+key+'" class="nav-link'+(active?' nav-link-on':'')+'" style="font-size:14px;cursor:pointer;padding:22px 0;border-bottom:2px solid '+ul+';color:'+color+';font-weight:'+weight+'">'+label+'</span>';
   }).join('');
   var unread = state.notifications.filter(function(n){return n.unread;}).length;
   var bellBadge = unread ? '<span class="num" style="position:absolute;top:-3px;right:-3px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:#e0568a;color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center">'+unread+'</span>' : '';
