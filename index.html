@@ -157,22 +157,32 @@
   .sec-link{transition:background .15s,border-color .15s,box-shadow .15s}
   .sec-link:hover{background:#e8f1fe;border-color:#bcd3f5;box-shadow:0 4px 12px rgba(47,115,232,.12)}
 
-  /* 使い方（howto） */
-  .howto-role{display:flex;gap:26px;align-items:center;flex-wrap:wrap}
-  .howto-label{flex:0 0 186px}
-  .howto-steps{flex:1;min-width:300px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
-  .howto-cta{flex:0 0 208px}
-  .howto-step{position:relative;flex:1;min-width:94px;text-align:center}
-  .howto-safety{display:grid;grid-template-columns:repeat(4,1fr);gap:22px}
-  @media (max-width:1120px){
-    .howto-role{justify-content:center}
-    .howto-label,.howto-cta{flex-basis:100%;text-align:center}
-    .howto-steps{flex-basis:100%;flex-wrap:wrap;justify-content:center;gap:28px 10px}
-    .howto-arrow{display:none}
-    .howto-step{flex:0 0 42%;min-width:130px}
+  /* 使い方（howto）: 色帯の中に白い見出し板＋ステップカードを並べる */
+  .howto-band{border-radius:22px;padding:32px 28px 34px;margin-bottom:22px}
+  .howto-banner{position:relative;background:#fff;border-radius:10px;padding:17px 30px;text-align:center;max-width:720px;margin:0 auto 36px}
+  .howto-banner::after{content:"";position:absolute;left:50%;bottom:-14px;transform:translateX(-50%);
+    border-left:15px solid transparent;border-right:15px solid transparent;border-top:15px solid #fff}
+  .howto-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .howto-cards.c3{grid-template-columns:repeat(3,1fr)}
+  .howto-card{background:#f7cf4a;border-radius:16px;padding:20px 18px 24px;
+    display:grid;grid-template-columns:1fr;grid-template-areas:"pill" "title" "ill" "desc";
+    justify-items:center;text-align:center;gap:0}
+  .hc-pill{grid-area:pill;background:#14233f;color:#fff;font-size:11px;font-weight:800;letter-spacing:.1em;padding:6px 20px;border-radius:20px}
+  .hc-title{grid-area:title;font-size:16px;font-weight:900;color:#2a2405;line-height:1.5;margin-top:14px}
+  .hc-ill{grid-area:ill;width:104px;margin:14px 0 4px}
+  .hc-desc{grid-area:desc;font-size:12.5px;font-weight:700;color:#5c4f11;line-height:1.75;margin-top:8px}
+  @media (max-width:900px){
+    .howto-cards,.howto-cards.c3{grid-template-columns:1fr;gap:13px}
+    .howto-card{grid-template-columns:1fr 86px;grid-template-areas:"pill ill" "title ill" "desc ill";
+      justify-items:start;text-align:left;align-items:center;padding:16px 18px;column-gap:12px}
+    .hc-title{font-size:14.5px;margin-top:9px}
+    .hc-ill{width:86px;margin:0;align-self:center}
+    .hc-desc{font-size:11.5px;margin-top:5px}
+    .howto-banner{padding:14px 20px;margin-bottom:30px}
   }
+  .howto-safety{display:grid;grid-template-columns:repeat(4,1fr);gap:22px}
   @media (max-width:900px){ .howto-safety{grid-template-columns:repeat(2,1fr)} }
-  @media (max-width:560px){ .howto-safety{grid-template-columns:1fr} .howto-step{flex-basis:100%} }
+  @media (max-width:560px){ .howto-safety{grid-template-columns:1fr} }
   .news-row{transition:background .15s}
   .news-row:hover{background:#f7faff}
   .nsw{width:38px;height:22px;border-radius:11px;position:relative;cursor:pointer;flex-shrink:0;transition:background .18s}
@@ -2042,50 +2052,52 @@ function howtoHTML(){
     + '<p style="margin:18px 0 0;font-size:14.5px;line-height:1.9;color:#5a6678">匿名で相談して、先輩からのアドバイスをもらうまでの流れを<br>わかりやすくご紹介します。</p>'
     + '</div>' + heroArt + '</section></div>';
 
-  function roleCard(cfg){
-    var arrowSvg = '<span class="howto-arrow" style="position:absolute;top:18px;right:-11px;display:flex"><svg width="40" height="14" viewBox="0 0 40 14" fill="none" stroke="#c3d3ef" stroke-width="2" stroke-linecap="round"><line x1="2" y1="7" x2="27" y2="7" stroke-dasharray="0.5 5"/><path d="M27 3l6 4-6 4"/></svg></span>';
-    var stepsHTML = cfg.steps.map(function(st, idx){
-      return '<div class="howto-step">'
-        + '<div style="position:relative;width:60px;height:60px;margin:0 auto">'
-        + '<div style="width:60px;height:60px;border-radius:50%;background:'+cfg.iconBg+';color:'+cfg.accent+';display:flex;align-items:center;justify-content:center">'+icon(st[0],24)+'</div>'
-        + '<span style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:26px;height:26px;border-radius:50%;background:'+cfg.accent+';color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;border:3px solid #fff">'+(idx+1)+'</span></div>'
-        + '<div style="font-size:13.5px;font-weight:800;color:#1b2942;margin-top:15px">'+st[1]+'</div>'
-        + '<div style="font-size:11.5px;color:#76839a;line-height:1.7;margin-top:6px">'+st[2]+'</div>'
-        + (idx < cfg.steps.length-1 ? arrowSvg : '') + '</div>';
+  // 参考デザインに合わせたステップ帯：色帯 → 白い見出し板 → 黄色のステップカード
+  function stepBand(cfg){
+    var cards = cfg.steps.map(function(st, i){
+      return '<div class="howto-card">'
+        + '<span class="hc-pill">STEP ' + (i+1) + '</span>'
+        + '<div class="hc-title">' + st[0] + '</div>'
+        + '<div class="hc-ill ill ' + st[1] + '"></div>'
+        + '<div class="hc-desc">' + st[2] + '</div>'
+        + '</div>';
     }).join('');
-    var label = '<div class="howto-label">'
-      + '<div style="width:56px;height:56px;border-radius:16px;background:'+cfg.iconBg+';color:'+cfg.accent+';display:flex;align-items:center;justify-content:center;margin-bottom:14px">'+icon(cfg.labelIcon,26)+'</div>'
-      + '<h2 style="margin:0;font-size:18px;font-weight:900;color:#14233f">'+cfg.title+'</h2>'
-      + '<p style="margin:6px 0 0;font-size:12.5px;color:#66738c;line-height:1.6">'+cfg.subtitle+'</p></div>';
-    var cta = '<div class="howto-cta" style="background:'+cfg.ctaBg+';border-radius:16px;padding:22px 20px;text-align:center">'
-      + '<div style="font-size:14px;font-weight:800;color:#14233f;line-height:1.65;margin-bottom:15px">'+cfg.ctaTitle+'</div>'
-      + '<button '+cfg.btnAttr+' style="cursor:pointer;border:none;background:'+cfg.btnBg+';color:'+cfg.btnColor+';font-weight:700;font-size:13.5px;padding:12px 22px;border-radius:11px;display:inline-flex;align-items:center;gap:7px">'+cfg.btnLabel+' <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>';
-    return '<div style="background:#fff;border:1px solid #e7edf6;border-radius:20px;padding:30px 32px;margin-bottom:22px"><div class="howto-role">'+label+'<div class="howto-steps">'+stepsHTML+'</div>'+cta+'</div></div>';
+    var cta = '<div style="text-align:center;margin-top:26px">'
+      + '<button ' + cfg.btnAttr + ' style="cursor:pointer;border:none;background:#fff;color:' + cfg.band + ';font-weight:800;font-size:14px;padding:13px 28px;border-radius:12px;display:inline-flex;align-items:center;gap:8px">'
+      + cfg.btnLabel + '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>';
+    return '<div class="howto-band" style="background:' + cfg.band + '">'
+      + '<div class="howto-banner">'
+      + '<div style="font-size:12px;font-weight:800;color:' + cfg.band + ';letter-spacing:.06em">' + cfg.eyebrow + '</div>'
+      + '<div style="font-size:clamp(18px,3.4vw,25px);font-weight:900;color:#14233f;line-height:1.45;margin-top:5px">'
+      +   cfg.title + '<span style="color:' + cfg.band + ';margin-left:8px">' + cfg.steps.length + ' STEP!</span></div>'
+      + '</div>'
+      + '<div class="howto-cards' + (cfg.steps.length === 3 ? ' c3' : '') + '">' + cards + '</div>'
+      + cta + '</div>';
   }
 
-  var studentCard = roleCard({
-    accent:'#2f73e8', iconBg:'#e8f1fe', labelIcon:P.person,
-    title:'在校生の方（相談する）', subtitle:'4ステップで簡単に相談できます',
+  var studentCard = stepBand({
+    band:'#2f73e8',
+    eyebrow:'在校生の方（相談する）',
+    title:'相談を投稿するまで、かんたん',
     steps:[
-      [P.folder,'カテゴリを選ぶ','進路・勉強・部活など<br>相談内容に近いカテゴリを選択'],
-      [P.pencil,'悩みを書く','タイトルと詳しい内容を<br>入力しましょう'],
-      [P.eye,'内容を確認して投稿','名前は表示されません<br>安心して投稿できます'],
-      [P.plane,'回答を受け取る','平均数時間で先輩から<br>返信が届きます']
+      ['カテゴリを選ぶ','ill-girl-book','進路・勉強・部活など<br>相談内容に近いカテゴリを選択'],
+      ['悩みを書く','ill-boy-laptop','タイトルと詳しい内容を<br>入力しましょう'],
+      ['内容を確認して投稿','ill-check','名前は表示されません<br>安心して投稿できます'],
+      ['回答を受け取る','ill-mail','平均数時間で先輩から<br>返信が届きます']
     ],
-    ctaBg:'#fdf4dd', ctaTitle:'まずは気軽に<br>相談してみよう！',
-    btnAttr:'data-nav="post"', btnBg:'#f5cb4d', btnColor:'#3d2f06', btnLabel:'今すぐ相談してみる'
+    btnAttr:'data-nav="post"', btnLabel:'今すぐ相談してみる'
   });
-  var senpaiCard = roleCard({
-    accent:'#1e9e63', iconBg:'#e7f5ee', labelIcon:P.shield,
-    title:'先輩の方（回答する）', subtitle:'4ステップで後輩をサポートできます',
+
+  var senpaiCard = stepBand({
+    band:'#1e9e63',
+    eyebrow:'先輩の方（相談に回答する）',
+    title:'後輩にアドバイスを届けるまで、かんたん',
     steps:[
-      [P.list,'相談一覧を見る','カテゴリ・学年で絞り込んで<br>興味のある相談を探す'],
-      [P.search,'気になる相談を開く','詳しい状況を読んで<br>理解を深めましょう'],
-      [P.pencil,'アドバイスを書く','自分の経験をもとに<br>丁寧に回答します'],
-      [P.heart,'「役に立った」が届く','感謝の気持ちが可視化され<br>やりがいになります']
+      ['相談一覧','ill-chat','カテゴリ・学年で絞り込んで<br>興味のある相談を探す'],
+      ['気になる相談を開く','ill-girl-phone','詳しい状況を読んで<br>理解を深めましょう'],
+      ['コメントを書く','ill-boy-laptop','自分の経験をもとに<br>丁寧に回答します']
     ],
-    ctaBg:'#e7f5ee', ctaTitle:'あなたの経験が<br>後輩の未来を支えます',
-    btnAttr:'data-nav="alumni"', btnBg:'#1e9e63', btnColor:'#fff', btnLabel:'先輩の方はこちら'
+    btnAttr:'data-nav="browse"', btnLabel:'相談を見てみる'
   });
 
   var safety = [
