@@ -4185,7 +4185,21 @@ function wire(){
     var nm = document.getElementById('mp-name'), kk = document.getElementById('mp-kaisei');
     if(nm && nm.value.trim()) state.userName = nm.value.trim();
     if(kk) state.userKaisei = parseInt(kk.value, 10);
-    render(); toast('プロフィールを更新しました');
+    // アカウントにも保存する（これがないと再読み込みで元に戻る）
+    if(state.authUser && state.authUser.uid && window.snDb && window.snDb.saveUserProfile){
+      var st = statusOf(state.userKaisei);
+      window.snDb.saveUserProfile(state.authUser.uid, {
+        email: state.authUser.email || '', name: state.authUser.name || '',
+        status: st.type === 'grad' ? 'grad' : 'current',
+        kaisei: state.userKaisei, grade: st.type === 'current' ? st.grade : null,
+        univ: state.userUniv || '', faculty: state.userFaculty || '',
+        nickname: state.userName, tags: (state.userTags || []).slice(),
+        updatedAt: Date.now()
+      });
+      render(); toast('プロフィールを更新しました');
+    } else {
+      render(); toast('プロフィールを更新しました（この端末のみ。ログインすると保存されます）');
+    }
   });
 
   // Setup (new-user profile) — text inputs update state silently to keep focus
