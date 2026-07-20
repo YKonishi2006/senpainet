@@ -9,7 +9,25 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.token.email));
     }
 
-    // 相談：公開読み取り／作成は誰でも（項目制限あり）／更新・削除は運営のみ
+    // 投稿者の記録。相談本体を匿名のまま保つため、uid はこちらに分けて持つ。
+    // 公開読み取りはさせない（誰がどの相談を書いたか他人にはたどれない）。
+    // ルール内の get() は読み取り権限に関係なく参照できるため、本人確認に使える。
+    function ownerUid(id) {
+      return get(/databases/$(database)/documents/consultationOwners/$(id)).data.uid;
+    }
+    function isOwner(id) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/consultationOwners/$(id))
+        && ownerUid(id) == request.auth.uid;
+    }
+    match /consultationOwners/{id} {
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow read, delete: if isOwner(id) || isAdmin();
+    }
+
+    // 相談：公開読み取り／作成は誰でも（項目制限あり）
+    // 更新・削除は投稿者本人と運営のみ。本人が変えられるのは本文まわりだけで、
+    // いいね数や閲覧数などは書き換えられない。
     match /consultations/{id} {
       allow read: if true;
       allow create: if request.resource.data.title is string
@@ -17,7 +35,16 @@ service cloud.firestore {
                     && request.resource.data.title.size() <= 60
                     && request.resource.data.body is string
                     && request.resource.data.body.size() <= 4000;
-      allow update, delete: if isAdmin();
+      allow update: if isAdmin()
+                    || (isOwner(id)
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['title', 'body', 'tags', 'category', 'editedAt'])
+                        && request.resource.data.title is string
+                        && request.resource.data.title.size() > 0
+                        && request.resource.data.title.size() <= 60
+                        && request.resource.data.body is string
+                        && request.resource.data.body.size() <= 4000);
+      allow delete: if isAdmin() || isOwner(id);
     }
 
     // 回答：各相談のサブコレクション。公開読み取り／作成は誰でも（本文制限あり）／
