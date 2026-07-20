@@ -22,6 +22,42 @@
   .row-hover{transition:box-shadow .15s,border-color .15s}
   .row-hover:hover{box-shadow:0 6px 18px rgba(15,23,42,.06);border-color:#cfe0fb}
 
+  /* ボタン共通のホバー：少し浮かせて影をつける。色は各ボタンの指定を活かすため
+     brightness で軽く持ち上げるだけにして、個別のインラインstyleと衝突させない。 */
+  button, [data-auth], [data-nav], [data-chip], [data-ptag], [data-mp-tag],
+  [data-edit-tag], [data-report-reason], [data-setup-tag]{
+    transition: transform .14s ease, box-shadow .14s ease, filter .14s ease, background .14s ease, border-color .14s ease;
+  }
+  button:hover:not(:disabled){ transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15,23,42,.13); filter: brightness(1.06); }
+  button:active:not(:disabled){ transform: translateY(0); box-shadow: 0 1px 3px rgba(15,23,42,.14); filter: brightness(.97); }
+  button:disabled{ cursor: not-allowed; opacity: .6 }
+
+  /* ボタン以外のクリックできる要素（span や div で作られているもの） */
+  [data-auth]:hover, [data-chip]:hover, [data-ptag]:hover, [data-mp-tag]:hover,
+  [data-edit-tag]:hover, [data-report-reason]:hover, [data-setup-tag]:hover{
+    transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15,23,42,.10); filter: brightness(1.04);
+  }
+  [data-auth]:active, [data-chip]:active, [data-ptag]:active, [data-mp-tag]:active,
+  [data-edit-tag]:active, [data-report-reason]:active, [data-setup-tag]:active{ transform: translateY(0) }
+
+  /* ナビ・テキストリンク系は浮かせず、色の変化だけにする */
+  [data-nav]:hover{ filter: brightness(1.1) }
+
+  /* キーボード操作でも位置が分かるように */
+  button:focus-visible, [data-auth]:focus-visible, [data-ptag]:focus-visible,
+  [data-mp-tag]:focus-visible, [data-chip]:focus-visible{
+    outline: 2px solid #2f73e8; outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    button, [data-auth], [data-nav], [data-chip], [data-ptag], [data-mp-tag],
+    [data-edit-tag], [data-report-reason], [data-setup-tag]{ transition: none }
+    button:hover:not(:disabled), [data-auth]:hover, [data-chip]:hover, [data-ptag]:hover,
+    [data-mp-tag]:hover, [data-edit-tag]:hover, [data-report-reason]:hover, [data-setup-tag]:hover{
+      transform: none;
+    }
+  }
+
   /* ===== Responsive ===== */
   .rs-burger{display:none}
   .rs-mobile-menu{display:none}
@@ -359,6 +395,7 @@ var state = {
   reportTarget: null, reportReason: '', reportNote: '', adminReportsLoaded: false,
   editTarget: null, editTitle: '', editBody: '', editTags: [],
   adminNewTag: '', adminEditTag: null, adminEditTagText: '',
+  adminQ: '', adminCatF: 'all', adminStatusF: 'all', adminSortF: 'new',
   mpTags: null, mpEmail: '', mpNotify: true, mpProfileLoaded: false,
   adminMembers: [], adminMembersLoaded: false, adminMembersLoading: false, adminMembersError: false, adminNewEmail: '', adminNewName: '',
   // Firebase 認証（Googleログイン＋招待制の許可リスト）
@@ -3343,17 +3380,41 @@ function adminDashboard(){
         ]));
 }
 
-function adminConsultations(){
-  // 一覧で選ばれた相談（未選択なら先頭）。管理画面から離れずに切り替えられる。
-  var sel = null;
-  if(state.adminSelectedId) sel = find(state.adminSelectedId);
-  if(!sel) sel = state.consultations[0] || null;
-
-  // ---- 左：相談リスト ----
-  var rows = state.consultations.map(function(c){
+// 絞り込み条件に合う相談だけを返す
+function adminConsFiltered(){
+  var q = (state.adminQ || '').trim().toLowerCase();
+  return state.consultations.filter(function(c){
+    if(state.adminCatF !== 'all' && c.category !== state.adminCatF) return false;
+    var answered = (c.answers || []).length > 0;
+    if(state.adminStatusF === 'answered' && !answered) return false;
+    if(state.adminStatusF === 'unanswered' && answered) return false;
+    if(state.adminStatusF === 'hidden' && !c.hidden) return false;
+    if(q){
+      var hay = ((c.title || '') + ' ' + (c.body || '') + ' ' + (c.tags || []).join(' ')).toLowerCase();
+      if(hay.indexOf(q) === -1) return false;
+    }
+    return true;
+  }).sort(function(x, y){
+    if(state.adminSortF === 'answers') return (y.answers || []).length - (x.answers || []).length;
+    if(state.adminSortF === 'views') return (y.views || 0) - (x.views || 0);
+    if(state.adminSortF === 'old') return (x.postedAt || 0) - (y.postedAt || 0);
+    return (y.postedAt || 0) - (x.postedAt || 0);
+  });
+}
+// 一覧の行だけを組み立てる（検索中は入力欄の位置を保つため、ここだけ差し替える）
+function adminConsRowsHTML(){
+  var sel = state.adminSelectedId ? find(state.adminSelectedId) : null;
+  var list = adminConsFiltered();
+  if(!list.length){
+    return '<div style="padding:30px 24px;text-align:center;color:#94a1b5;font-size:13px">'
+      + (state.adminQ || state.adminCatF !== 'all' || state.adminStatusF !== 'all'
+          ? '条件に合う相談がありません。<br><span style="font-size:12px">検索語や絞り込みを変えてみてください。</span>'
+          : '相談がありません。') + '</div>';
+  }
+  return list.map(function(c){
     var m = cats[c.category];
     var on = sel && c.id === sel.id;
-    var answered = c.answers.length > 0;
+    var answered = (c.answers || []).length > 0;
     return '<div data-admin-view="'+c.id+'" class="row-hover" style="cursor:pointer;padding:13px 16px;border-bottom:1px solid #eef1f7;border-left:3px solid '+(on?'#2f73e8':'transparent')+';background:'+(on?'#f2f7fd':(c.hidden?'#fbfcfe':'#fff'))+'">'
       + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">'
       + admBadge(m.label, m.color, m.bg)
@@ -3361,10 +3422,41 @@ function adminConsultations(){
       + (c.hidden ? admBadge('非表示','#5a6675','#eaeef4') : '')
       + '</div>'
       + '<div style="font-size:13.5px;font-weight:700;color:#1b2942;line-height:1.5'+(c.hidden?';opacity:.55':'')+'">'+esc(c.title)+'</div>'
-      + '<div style="font-size:11px;color:#94a1b5;margin-top:5px">'+(GRADE_LABELS[c.grade]||'-')+' ・ 回答 '+c.answers.length+' ・ 閲覧 '+c.views+' ・ '+esc(c.time||'')+'</div>'
+      + '<div style="font-size:11px;color:#94a1b5;margin-top:5px">'+(GRADE_LABELS[c.grade]||'-')+' ・ 回答 '+(c.answers||[]).length+' ・ 閲覧 '+(c.views||0)+' ・ '+esc(c.time||'')+'</div>'
       + '</div>';
-  }).join('') || '<div style="padding:24px;text-align:center;color:#94a1b5;font-size:13px">相談がありません。</div>';
-  var listCard = admCard('相談一覧（'+state.consultations.length+'件）','', '<div style="max-height:640px;overflow-y:auto">'+rows+'</div>');
+  }).join('');
+}
+
+function adminConsultations(){
+  // 一覧で選ばれた相談（未選択なら絞り込み後の先頭）
+  var filtered = adminConsFiltered();
+  var sel = null;
+  if(state.adminSelectedId) sel = find(state.adminSelectedId);
+  if(!sel) sel = filtered[0] || null;
+
+  // ---- 絞り込みバー ----
+  function selBox(id, attr, opts, cur){
+    var o = opts.map(function(x){ return '<option value="'+x[0]+'"'+(cur===x[0]?' selected':'')+'>'+x[1]+'</option>'; }).join('');
+    return '<select id="'+id+'" '+attr+' style="border:1.5px solid #dde4f1;border-radius:9px;padding:8px 11px;font-size:12.5px;color:#1b2942;background:#fff;outline:none;cursor:pointer">'+o+'</select>';
+  }
+  var catOpts = [['all','すべてのカテゴリ']].concat(Object.keys(cats).map(function(k){ return [k, cats[k].label]; }));
+  var searchIcon = '<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);display:flex;color:#a8b3c4"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg></span>';
+  var filterBar = '<div style="padding:14px 16px;border-bottom:1px solid #eef1f7;display:flex;flex-direction:column;gap:10px">'
+    + '<div style="position:relative">'+searchIcon
+    + '<input id="admin-cons-q" value="'+esc(state.adminQ||'')+'" placeholder="タイトル・本文・タグで検索" style="width:100%;box-sizing:border-box;border:1.5px solid #dde4f1;border-radius:9px;padding:9px 12px 9px 34px;font-size:13px;color:#1b2942;outline:none">'
+    + '</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    + selBox('admin-cons-cat','', catOpts, state.adminCatF)
+    + selBox('admin-cons-status','', [['all','すべての状態'],['unanswered','未回答'],['answered','回答あり'],['hidden','非表示中']], state.adminStatusF)
+    + selBox('admin-cons-sort','', [['new','新しい順'],['old','古い順'],['answers','回答が多い順'],['views','閲覧が多い順']], state.adminSortF)
+    + ((state.adminQ || state.adminCatF !== 'all' || state.adminStatusF !== 'all')
+        ? '<button data-admin-cons-reset="1" style="cursor:pointer;background:#fff;border:1.5px solid #dde4f1;color:#66738c;font-weight:700;font-size:12.5px;padding:8px 14px;border-radius:9px">条件をクリア</button>' : '')
+    + '</div></div>';
+
+  var countLabel = '<span id="admin-cons-count" style="font-size:12px;color:#66738c">'+filtered.length+' / '+state.consultations.length+' 件</span>';
+  var listCard = admCard('相談一覧', countLabel,
+    filterBar + '<div id="admin-cons-list" style="max-height:560px;overflow-y:auto">'+adminConsRowsHTML()+'</div>');
+
 
   // ---- 右：選択した相談のプレビュー（このページ内で確認・操作） ----
   var preview;
@@ -3964,7 +4056,7 @@ function on(sel,evt,fn){ var n=document.getElementById(sel); if(n) n.addEventLis
 // handlers across re-renders, which would fire toggles multiple times.
 function setupDelegation(){
   document.body.addEventListener('click', function(e){
-    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-mp-tag],[data-mp-notify],[data-mp-notify-save],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-open-cons],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-admin-add-member],[data-admin-remove-member],[data-admin-resend-invite],[data-invite-copy],[data-admin-del-cons],[data-admin-del-cons-confirm],[data-admin-tag-add],[data-admin-tag-edit],[data-admin-tag-cancel],[data-admin-tag-save],[data-admin-tag-up],[data-admin-tag-del],[data-admin-tag-del-confirm],[data-edit-open],[data-edit-tag],[data-edit-save],[data-del-open],[data-del-confirm],[data-report-open],[data-report-reason],[data-report-submit],[data-admin-remove-confirm],[data-report-confirm],[data-report-warn],[data-report-suspend],[data-report-delete],[data-report-dismiss],[data-menu]');
+    var t = e.target.closest('[data-nav],[data-open],[data-like],[data-bookmark],[data-chip],[data-grade],[data-helpful],[data-auth],[data-google],[data-info],[data-support],[data-legal],[data-mytab],[data-setup-status],[data-setup-grade],[data-setup-tag],[data-setup-notify],[data-mp-tag],[data-mp-notify],[data-mp-notify-save],[data-ptag],[data-setup-done],[data-setup-skip],[data-community-open],[data-community-back],[data-community-like],[data-community-post],[data-cm-filter],[data-cm-setsort],[data-cm-sort],[data-cm-feedtab],[data-cm-follow],[data-cm-post],[data-cm-bookmark],[data-community-feed-open],[data-news-filter],[data-news-page],[data-news-pref],[data-qa-cat],[data-qa-status],[data-qa-follow],[data-qa-reset],[data-qa-post],[data-toast],[data-outreach-new],[data-outreach-respond],[data-outreach-filter],[data-bell],[data-sns],[data-browse-sort],[data-browse-more],[data-answer-sort],[data-ansort],[data-answer-anon],[data-reply-open],[data-reply-cancel],[data-post-more],[data-post-edit],[data-scroll],[data-profile],[data-logout],[data-mypost],[data-more-toast],[data-notif],[data-notif-read],[data-admin],[data-admin-login],[data-admin-logout],[data-admin-tab],[data-admin-view],[data-admin-report-view],[data-admin-open-cons],[data-admin-back],[data-admin-hide],[data-admin-user],[data-admin-news-del],[data-admin-sn-del],[data-admin-report-resolve],[data-admin-report-del],[data-admin-add-member],[data-admin-remove-member],[data-admin-resend-invite],[data-invite-copy],[data-admin-cons-reset],[data-admin-del-cons],[data-admin-del-cons-confirm],[data-admin-tag-add],[data-admin-tag-edit],[data-admin-tag-cancel],[data-admin-tag-save],[data-admin-tag-up],[data-admin-tag-del],[data-admin-tag-del-confirm],[data-edit-open],[data-edit-tag],[data-edit-save],[data-del-open],[data-del-confirm],[data-report-open],[data-report-reason],[data-report-submit],[data-admin-remove-confirm],[data-report-confirm],[data-report-warn],[data-report-suspend],[data-report-delete],[data-report-dismiss],[data-menu]');
     if(!t) return;
     if(t.hasAttribute('data-like') || t.hasAttribute('data-bookmark') || t.hasAttribute('data-helpful')) e.stopPropagation();
 
@@ -4123,6 +4215,10 @@ function setupDelegation(){
       var mm = state.adminMembers.filter(function(m){ return (m.email||'').toLowerCase()===rem2.toLowerCase(); })[0];
       sendInvite(rem2, by2, mm && mm.name);
       return;
+    }
+    if(t.hasAttribute('data-admin-cons-reset')){
+      state.adminQ = ''; state.adminCatF = 'all'; state.adminStatusF = 'all';
+      state.adminSelectedId = null; render(); return;
     }
     // ---- 運営による相談の削除 ----
     if(t.hasAttribute('data-admin-del-cons')){
@@ -4327,6 +4423,18 @@ function wire(){
     var more = document.getElementById('browse-more');
     if(more) more.outerHTML = browseMoreHTML();
   });
+
+  // 相談管理の検索（一覧だけ差し替えてカーソル位置を保つ）
+  on('admin-cons-q','input', function(e){
+    state.adminQ = e.target.value;
+    var list = document.getElementById('admin-cons-list');
+    if(list) list.innerHTML = adminConsRowsHTML();
+    var cnt = document.getElementById('admin-cons-count');
+    if(cnt) cnt.textContent = adminConsFiltered().length + ' / ' + state.consultations.length + ' 件';
+  });
+  on('admin-cons-cat','change', function(e){ state.adminCatF = e.target.value; state.adminSelectedId = null; render(); });
+  on('admin-cons-status','change', function(e){ state.adminStatusF = e.target.value; state.adminSelectedId = null; render(); });
+  on('admin-cons-sort','change', function(e){ state.adminSortF = e.target.value; render(); });
 
   // Post form — update silently to keep caret position
   on('p-cat','change', function(e){
