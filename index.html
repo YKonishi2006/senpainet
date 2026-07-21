@@ -811,7 +811,7 @@ function reportAuthor(r){ return (r && r.authorId) ? findById(state.adminUsers, 
 // そのためURLを知られても、送れるのは SenpaiNet の招待文に限られる（+1日の送信上限あり）。
 var INVITE_ENDPOINT = 'https://script.google.com/macros/s/AKfycbw-hD9VH3O-tGSa-IOnPbrWgIHgxvzbSw9iBN520DNm3x_5Zrs1imiN70lTZZs6AthxWg/exec';
 // 実行中のドメインから作るので、github.io でも独自ドメインでも自動で正しくなる
-var INVITE_URL = (typeof location !== 'undefined' ? location.origin : 'https://senpainet.js.org') + '/#admin';
+var INVITE_URL = (typeof location !== 'undefined' ? location.origin : 'https://ykonishi2006.github.io/senpainet') + '/#admin';
 
 function inviteMail(email, by, name){
   return {

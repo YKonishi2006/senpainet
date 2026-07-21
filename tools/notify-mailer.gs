@@ -45,7 +45,7 @@
  */
 
 var PROJECT_ID = 'senpainet-console';
-var SITE_URL = 'https://senpainet.js.org/';
+var SITE_URL = 'https://ykonishi2006.github.io/senpainet/';
 
 // 1回の実行で処理する通知の上限（暴走を防ぐため）
 var MAX_QUEUE_PER_RUN = 10;
