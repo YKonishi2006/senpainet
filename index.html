@@ -810,7 +810,8 @@ function reportAuthor(r){ return (r && r.authorId) ? findById(state.adminUsers, 
 // 件名・本文は Apps Script 側で固定してあり、ここから渡せるのは宛先と招待者名だけ。
 // そのためURLを知られても、送れるのは SenpaiNet の招待文に限られる（+1日の送信上限あり）。
 var INVITE_ENDPOINT = 'https://script.google.com/macros/s/AKfycbw-hD9VH3O-tGSa-IOnPbrWgIHgxvzbSw9iBN520DNm3x_5Zrs1imiN70lTZZs6AthxWg/exec';
-var INVITE_URL = 'https://ykonishi2006.github.io/senpainet/#admin';
+// 実行中のドメインから作るので、github.io でも独自ドメインでも自動で正しくなる
+var INVITE_URL = (typeof location !== 'undefined' ? location.origin : 'https://senpainet.js.org') + '/#admin';
 
 function inviteMail(email, by, name){
   return {
@@ -4893,7 +4894,7 @@ render();
         // 招待メールを送信キュー（mail コレクション）に積む。
         // Firebase 拡張「Trigger Email from Firestore」が実際の送信を担当する。
         sendAdminInvite: async (email, by) => {
-          var url = "https://ykonishi2006.github.io/senpainet/#admin";
+          var url = location.origin + "/#admin";
           try {
             await addDoc(collection(db, "mail"), {
               to: [email],
